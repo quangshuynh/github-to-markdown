@@ -25,13 +25,18 @@ form.addEventListener("submit", async (event) => {
   statusEl.textContent = `Loading @${username}...`;
 
   try {
-    const user = await fetchJson(`https://api.github.com/users/${encodeURIComponent(username)}`);
+    const user = await fetchJson(
+      `https://api.github.com/users/${encodeURIComponent(username)}`
+    );
+
     const repositories = await fetchAllRepositories(username);
 
     currentUsername = user.login;
     output.value = createMarkdown(user.login, repositories);
     resultSection.hidden = false;
-    statusEl.textContent = `Found ${repositories.length} public repositories for @${user.login}.`;
+
+    statusEl.textContent =
+      `Found ${repositories.length} public repositories for @${user.login}.`;
   } catch (error) {
     showError(error.message);
   } finally {
@@ -42,13 +47,17 @@ form.addEventListener("submit", async (event) => {
 copyButton.addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(output.value);
+
     const original = copyButton.textContent;
     copyButton.textContent = "Copied!";
+
     setTimeout(() => {
       copyButton.textContent = original;
     }, 1200);
   } catch {
-    showError("Could not copy automatically. Select the Markdown and copy it manually.");
+    showError(
+      "Could not copy automatically. Select the Markdown and copy it manually."
+    );
   }
 });
 
@@ -61,14 +70,22 @@ downloadButton.addEventListener("click", () => {
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
+
   link.href = url;
   link.download = `${currentUsername || "github-user"}-repositories.md`;
+
   document.body.appendChild(link);
   link.click();
   link.remove();
+
   URL.revokeObjectURL(url);
 });
 
+/**
+ * fetches all public repositories owned by a github user
+ * @param {string} username github username
+ * @returns {Promise<Array>} public repositories belonging to the user
+ */
 async function fetchAllRepositories(username) {
   const allRepos = [];
   let page = 1;
@@ -80,6 +97,7 @@ async function fetchAllRepositories(username) {
       `?type=owner&sort=updated&direction=desc&per_page=${perPage}&page=${page}`;
 
     const repos = await fetchJson(url);
+
     allRepos.push(...repos);
 
     if (repos.length < perPage) {
@@ -92,6 +110,11 @@ async function fetchAllRepositories(username) {
   return allRepos;
 }
 
+/**
+ * fetches json data from a url and handles github api errors
+ * @param {string} url url to request
+ * @returns {Promise<Object|Array>} parsed json response
+ */
 async function fetchJson(url) {
   const response = await fetch(url, {
     headers: {
@@ -117,6 +140,12 @@ async function fetchJson(url) {
   return response.json();
 }
 
+/**
+ * creates a markdown summary from a github username and repositories
+ * @param {string} username github username
+ * @param {Array} repositories public github repositories
+ * @returns {string} formatted markdown summary
+ */
 function createMarkdown(username, repositories) {
   const lines = [
     `username: ${escapeMarkdown(username)}`,
@@ -139,6 +168,11 @@ function createMarkdown(username, repositories) {
   return lines.join("\n");
 }
 
+/**
+ * escapes markdown special characters in a value
+ * @param {*} value value to escape
+ * @returns {string} markdown safe string
+ */
 function escapeMarkdown(value) {
   return String(value)
     .replace(/\\/g, "\\\\")
@@ -146,11 +180,21 @@ function escapeMarkdown(value) {
     .replace(/([*_`[\]<>])/g, "\\$1");
 }
 
+/**
+ * updates the generate button loading state
+ * @param {boolean} isLoading whether the application is currently loading
+ * @returns {void} no return value
+ */
 function setLoading(isLoading) {
   generateButton.disabled = isLoading;
   generateButton.textContent = isLoading ? "Generating..." : "Generate";
 }
 
+/**
+ * displays an error message to the user
+ * @param {string} message error message to display
+ * @returns {void} no return value
+ */
 function showError(message) {
   statusEl.classList.add("error");
   statusEl.textContent = message;
