@@ -6,7 +6,7 @@ A simple website that turns any GitHub user's public repositories into a clean M
 
 * Search by GitHub username
 * Fetch all public repositories
-* Display repository names and descriptions
+* Display repository names, descriptions, dates, and activity metadata
 * Generate a clean Markdown summary
 * Copy the generated Markdown
 * Download the result as a `.md` file
@@ -26,11 +26,35 @@ public repositories: 2
 
 - name: example-one
 - desc: Example repository description
+- url: https://github.com/quangshuynh/example-one
+- created: 2024-01-15
+- last updated: 2025-06-20
+- last pushed: 2025-06-20
+- primary language: JavaScript
+- license: MIT
+- topics: github, markdown
+- stars: 12
+- forks: 3
+- open issues and pull requests: 1
+- archived: No
+- forked repository: No
 
 ### repo 2:
 
 - name: example-two
 - desc: No description
+- url: https://github.com/quangshuynh/example-two
+- created: 2023-08-04
+- last updated: 2025-02-10
+- last pushed: 2025-02-10
+- primary language: Not specified
+- license: Not specified
+- topics: None
+- stars: 0
+- forks: 0
+- open issues and pull requests: 0
+- archived: No
+- forked repository: No
 ```
 
 ## Running Locally

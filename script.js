@@ -161,6 +161,18 @@ function createMarkdown(username, repositories) {
       "",
       `- name: ${escapeMarkdown(repo.name)}`,
       `- desc: ${escapeMarkdown(repo.description || "No description")}`,
+      `- url: ${repo.html_url}`,
+      `- created: ${repo.created_at.slice(0, 10)}`,
+      `- last updated: ${repo.updated_at.slice(0, 10)}`,
+      `- last pushed: ${repo.pushed_at ? repo.pushed_at.slice(0, 10) : "Never"}`,
+      `- primary language: ${escapeMarkdown(repo.language || "Not specified")}`,
+      `- license: ${escapeMarkdown(repo.license?.spdx_id || "Not specified")}`,
+      `- topics: ${escapeMarkdown(repo.topics?.join(", ") || "None")}`,
+      `- stars: ${repo.stargazers_count}`,
+      `- forks: ${repo.forks_count}`,
+      `- open issues and pull requests: ${repo.open_issues_count}`,
+      `- archived: ${repo.archived ? "Yes" : "No"}`,
+      `- forked repository: ${repo.fork ? "Yes" : "No"}`,
       ""
     );
   });
