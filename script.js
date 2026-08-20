@@ -147,6 +147,10 @@ async function fetchJson(url) {
  * @returns {string} formatted markdown summary
  */
 function createMarkdown(username, repositories) {
+  const repositoriesByCreationDate = [...repositories].sort(
+    compareCreationDatesNewestFirst
+  );
+
   const lines = [
     `username: ${escapeMarkdown(username)}`,
     `public repositories: ${repositories.length}`,
@@ -155,9 +159,9 @@ function createMarkdown(username, repositories) {
     "",
   ];
 
-  repositories.forEach((repo, index) => {
+  repositoriesByCreationDate.forEach((repo, index) => {
     lines.push(
-      `### repo ${index + 1}:`,
+      `### repo ${repositories.length - index}:`,
       "",
       `- name: ${escapeMarkdown(repo.name)}`,
       `- desc: ${escapeMarkdown(repo.description || "No description")}`,
@@ -178,6 +182,16 @@ function createMarkdown(username, repositories) {
   });
 
   return lines.join("\n");
+}
+
+/**
+ * compares repository creation dates with the newest repository first
+ * @param {Object} repoA first repository to compare
+ * @param {Object} repoB second repository to compare
+ * @returns {number} sort order for the two repositories
+ */
+function compareCreationDatesNewestFirst(repoA, repoB) {
+  return new Date(repoB.created_at) - new Date(repoA.created_at);
 }
 
 /**

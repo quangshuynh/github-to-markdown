@@ -6,6 +6,7 @@ A simple website that turns any GitHub user's public repositories into a clean M
 
 * Search by GitHub username
 * Fetch all public repositories
+* Sort repositories by creation date, with the oldest repository at the bottom
 * Display repository names, descriptions, dates, and activity metadata
 * Generate a clean Markdown summary
 * Copy the generated Markdown
@@ -22,12 +23,12 @@ public repositories: 2
 
 # repositories:
 
-### repo 1:
+### repo 2:
 
 - name: example-one
 - desc: Example repository description
 - url: https://github.com/quangshuynh/example-one
-- created: 2024-01-15
+- created: 2025-01-15
 - last updated: 2025-06-20
 - last pushed: 2025-06-20
 - primary language: JavaScript
@@ -39,7 +40,7 @@ public repositories: 2
 - archived: No
 - forked repository: No
 
-### repo 2:
+### repo 1:
 
 - name: example-two
 - desc: No description
