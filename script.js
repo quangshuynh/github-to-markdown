@@ -215,7 +215,6 @@ function createMarkdown(username, repositories, pinnedRepositories = null) {
       "",
       `- name: ${escapeMarkdown(repo.name)}`,
       `- desc: ${escapeMarkdown(repo.description || "No description")}`,
-      `- pinned on profile: ${pinnedRepositories === null ? "Unavailable" : pinnedRepositoryNames.has(repo.name) ? "Yes" : "No"}`,
       `- url: ${repo.html_url}`,
       `- created: ${formatEasternTimestamp(repo.created_at)}`,
       `- last updated: ${formatEasternTimestamp(repo.updated_at)}`,
