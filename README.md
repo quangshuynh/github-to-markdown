@@ -17,7 +17,7 @@ A simple website that turns any GitHub user's public repositories into a clean M
 The generated Markdown looks like this:
 
 ```md
-username: quangshuynh
+username: burg3rman22
 public repositories: 2
 
 # repositories:
