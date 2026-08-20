@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Turn a GitHub user's public repositories into Markdown." />
+  <meta name="description" content="Export GitHub repository information to Markdown and audit repository names and descriptions." />
   <title>GitHub → Markdown</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -13,7 +13,7 @@
       <p class="eyebrow">GitHub → Markdown</p>
       <h1>Export a GitHub profile's repositories</h1>
       <p class="subtitle">
-        Enter a GitHub username to generate a Markdown summary of their public repositories.
+        Generate a Markdown repository report and separately audit repository names and descriptions.
       </p>
 
       <form id="github-form">
@@ -44,6 +44,20 @@
           </div>
         </div>
         <textarea id="output" readonly spellcheck="false"></textarea>
+      </section>
+
+      <section id="audit-section" class="audit-section" hidden>
+        <div class="audit-header">
+          <div>
+            <p class="eyebrow">Separate from your Markdown report</p>
+            <h2>Name and description audit</h2>
+          </div>
+          <p id="audit-summary" class="audit-summary"></p>
+        </div>
+        <p class="audit-note">
+          Suggestions are generated with local quality checks. Expand an AI prompt to request a contextual rewrite from your preferred AI assistant.
+        </p>
+        <div id="audit-list" class="audit-list"></div>
       </section>
     </section>
   </main>

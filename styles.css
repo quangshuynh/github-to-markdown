@@ -43,7 +43,9 @@ textarea {
 }
 
 h1,
-h2 {
+h2,
+h3,
+h4 {
   margin-top: 0;
 }
 
@@ -124,6 +126,108 @@ button.secondary {
   margin-top: 28px;
 }
 
+.audit-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid #30363d;
+}
+
+.audit-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.audit-header h2 {
+  margin-bottom: 0;
+}
+
+.audit-summary,
+.audit-note,
+.audit-empty {
+  color: #8b949e;
+}
+
+.audit-summary {
+  margin: 0;
+  text-align: right;
+}
+
+.audit-note {
+  max-width: 72ch;
+  line-height: 1.55;
+}
+
+.audit-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.audit-card {
+  padding: 20px;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  background: #0d1117;
+}
+
+.audit-card h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.audit-card h3 a {
+  color: #58a6ff;
+  text-decoration: none;
+}
+
+.audit-card h3 a:hover {
+  text-decoration: underline;
+}
+
+.audit-card h4 {
+  margin-bottom: 6px;
+  color: #c9d1d9;
+}
+
+.audit-card ul {
+  margin: 0 0 16px;
+  padding-left: 22px;
+  color: #b1bac4;
+  line-height: 1.5;
+}
+
+.audit-score {
+  flex: none;
+  padding: 4px 9px;
+  border: 1px solid #d29922;
+  border-radius: 999px;
+  color: #e3b341;
+  font-size: 0.78rem;
+}
+
+.audit-card details {
+  color: #8b949e;
+}
+
+.audit-card summary {
+  color: #58a6ff;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.audit-card details p {
+  margin-bottom: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #161b22;
+  line-height: 1.5;
+}
+
 .result-header {
   display: flex;
   align-items: center;
@@ -165,9 +269,14 @@ textarea {
   }
 
   .input-row,
-  .result-header {
+  .result-header,
+  .audit-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .audit-summary {
+    text-align: left;
   }
 
   .actions button {

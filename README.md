@@ -9,9 +9,19 @@ A simple website that turns any GitHub user's public repositories into a clean M
 * Sort repositories by creation date, with the oldest repository at the bottom
 * Display repository names, descriptions, dates, and activity metadata
 * Generate a clean Markdown summary
+* Audit repository names for consistency, length, and overly generic naming
+* Audit descriptions for missing context, placeholders, length, and status labels
+* Show audit findings separately from the Markdown report
+* Generate AI-ready prompts for suggested names and descriptions
 * Copy the generated Markdown
 * Download the result as a `.md` file
 * No backend or dependencies required
+
+## Description Audit
+
+The page displays name and description suggestions in a separate section after generating the standard Markdown report. Audit findings are never added to copied or downloaded Markdown.
+
+The checks run locally without an API key. Each flagged repository includes an AI-ready prompt that can be pasted into an AI assistant. A future direct AI integration should use a backend or serverless function so credentials are not exposed in browser code.
 
 ## Output
 
