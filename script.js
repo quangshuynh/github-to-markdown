@@ -166,9 +166,9 @@ function createMarkdown(username, repositories) {
       `- name: ${escapeMarkdown(repo.name)}`,
       `- desc: ${escapeMarkdown(repo.description || "No description")}`,
       `- url: ${repo.html_url}`,
-      `- created: ${repo.created_at.slice(0, 10)}`,
-      `- last updated: ${repo.updated_at.slice(0, 10)}`,
-      `- last pushed: ${repo.pushed_at ? repo.pushed_at.slice(0, 10) : "Never"}`,
+      `- created: ${formatEasternTimestamp(repo.created_at)}`,
+      `- last updated: ${formatEasternTimestamp(repo.updated_at)}`,
+      `- last pushed: ${repo.pushed_at ? formatEasternTimestamp(repo.pushed_at) : "Never"}`,
       `- primary language: ${escapeMarkdown(repo.language || "Not specified")}`,
       `- license: ${escapeMarkdown(repo.license?.spdx_id || "Not specified")}`,
       `- topics: ${escapeMarkdown(repo.topics?.join(", ") || "None")}`,
@@ -192,6 +192,24 @@ function createMarkdown(username, repositories) {
  */
 function compareCreationDatesNewestFirst(repoA, repoB) {
   return new Date(repoB.created_at) - new Date(repoA.created_at);
+}
+
+/**
+ * formats a github timestamp in united states eastern time
+ * @param {string} timestamp iso timestamp returned by github
+ * @returns {string} date and time formatted in est or edt
+ */
+function formatEasternTimestamp(timestamp) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date(timestamp));
 }
 
 /**

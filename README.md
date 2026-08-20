@@ -28,9 +28,9 @@ public repositories: 2
 - name: example-one
 - desc: Example repository description
 - url: https://github.com/quangshuynh/example-one
-- created: 2025-01-15
-- last updated: 2025-06-20
-- last pushed: 2025-06-20
+- created: Jan 15, 2025, 10:30:00 AM EST
+- last updated: Jun 20, 2025, 4:45:00 PM EDT
+- last pushed: Jun 20, 2025, 4:45:00 PM EDT
 - primary language: JavaScript
 - license: MIT
 - topics: github, markdown
@@ -45,9 +45,9 @@ public repositories: 2
 - name: example-two
 - desc: No description
 - url: https://github.com/quangshuynh/example-two
-- created: 2023-08-04
-- last updated: 2025-02-10
-- last pushed: 2025-02-10
+- created: Aug 4, 2023, 9:15:00 AM EDT
+- last updated: Feb 10, 2025, 1:20:00 PM EST
+- last pushed: Feb 10, 2025, 1:20:00 PM EST
 - primary language: Not specified
 - license: Not specified
 - topics: None
