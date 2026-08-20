@@ -8,6 +8,7 @@ A simple website that turns any GitHub user's public repositories into a clean M
 * Fetch all public repositories
 * Sort repositories by creation date, with the oldest repository at the bottom
 * Display repository names, descriptions, dates, and activity metadata
+* Include profile-pinned repositories when the serverless API is configured
 * Generate a clean Markdown summary
 * Audit repository names for consistency, length, and overly generic naming
 * Audit descriptions for missing context, placeholders, length, and status labels
@@ -93,9 +94,25 @@ Then visit:
 http://localhost:8000
 ```
 
+## Pinned Repository Setup
+
+Pinned repository data uses the serverless function in `api/pinned-repositories.js`. Create `.env.local` with a fine-grained GitHub token, then run the project with the Vercel CLI:
+
+```text
+GITHUB_TOKEN=your_fine_grained_github_token
+```
+
+```bash
+vercel dev
+```
+
+For production, deploy to Vercel and add `GITHUB_TOKEN` in the project's environment variables. Never commit the token. If the function or token is unavailable, reports and audits still work and pin data is labeled unavailable.
+
 ## Deploying to GitHub Pages
 
 This project is completely static, so it can be hosted directly with GitHub Pages. You do **not** need to install a `gh-pages` package.
+
+GitHub Pages cannot execute the serverless function. Reports and audits work there, but pinned repository data requires a deployment that supports the function, such as Vercel.
 
 First, make sure your project has been pushed to GitHub:
 
@@ -151,11 +168,15 @@ Contains the styling and responsive layout.
 
 ### `script.js`
 
-Handles GitHub API requests, repository pagination, Markdown generation, copying, and `.md` downloads.
+Handles GitHub API requests, repository pagination, pinned-repository integration, Markdown generation, auditing, copying, and `.md` downloads.
+
+### `api/pinned-repositories.js`
+
+Securely queries GitHub GraphQL for repositories pinned to a user's profile. It requires the server-side `GITHUB_TOKEN` environment variable.
 
 ## GitHub API
 
-The website uses the GitHub REST API to retrieve public user and repository information.
+The website uses the GitHub REST API to retrieve public user and repository information. The optional serverless function uses GitHub GraphQL to retrieve profile pins.
 
 For example:
 

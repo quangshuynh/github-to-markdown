@@ -33,16 +33,22 @@ form.addEventListener("submit", async (event) => {
       `https://api.github.com/users/${encodeURIComponent(username)}`
     );
 
-    const repositories = await fetchAllRepositories(username);
+    const [repositories, pinnedRepositories] = await Promise.all([
+      fetchAllRepositories(username),
+      fetchPinnedRepositories(username),
+    ]);
 
     currentUsername = user.login;
-    output.value = createMarkdown(user.login, repositories);
+    output.value = createMarkdown(user.login, repositories, pinnedRepositories);
     renderAudits(repositories);
     resultSection.hidden = false;
     auditSection.hidden = false;
 
+    const pinnedStatus = pinnedRepositories
+      ? ` Found ${pinnedRepositories.length} pinned repositories.`
+      : " Pinned repositories are unavailable until the serverless API is configured.";
     statusEl.textContent =
-      `Found ${repositories.length} public repositories for @${user.login}.`;
+      `Found ${repositories.length} public repositories for @${user.login}.${pinnedStatus}`;
   } catch (error) {
     showError(error.message);
   } finally {
@@ -117,6 +123,29 @@ async function fetchAllRepositories(username) {
 }
 
 /**
+ * fetches repository names pinned to a github user's profile
+ * @param {string} username github username
+ * @returns {Promise<Array<string>|null>} pinned repository names or null when unavailable
+ */
+async function fetchPinnedRepositories(username) {
+  try {
+    const response = await fetch(
+      `/api/pinned-repositories?username=${encodeURIComponent(username)}`,
+      { headers: { Accept: "application/json" } }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return Array.isArray(data.repositories) ? data.repositories : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * fetches json data from a url and handles github api errors
  * @param {string} url url to request
  * @returns {Promise<Object|Array>} parsed json response
@@ -150,20 +179,35 @@ async function fetchJson(url) {
  * creates a markdown summary from a github username and repositories
  * @param {string} username github username
  * @param {Array} repositories public github repositories
+ * @param {Array<string>|null} pinnedRepositories pinned repository names or null when unavailable
  * @returns {string} formatted markdown summary
  */
-function createMarkdown(username, repositories) {
+function createMarkdown(username, repositories, pinnedRepositories = null) {
   const repositoriesByCreationDate = [...repositories].sort(
     compareCreationDatesNewestFirst
   );
+  const pinnedRepositoryNames = new Set(pinnedRepositories || []);
 
   const lines = [
     `username: ${escapeMarkdown(username)}`,
     `public repositories: ${repositories.length}`,
     "",
-    "# repositories:",
-    "",
   ];
+
+  lines.push("# pinned repositories:", "");
+
+  if (pinnedRepositories === null) {
+    lines.push("Pinned repository data unavailable.", "");
+  } else if (pinnedRepositories.length === 0) {
+    lines.push("No public repositories pinned.", "");
+  } else {
+    for (const repositoryName of pinnedRepositories) {
+      lines.push(`- ${escapeMarkdown(repositoryName)}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("# repositories:", "");
 
   repositoriesByCreationDate.forEach((repo, index) => {
     lines.push(
@@ -171,6 +215,7 @@ function createMarkdown(username, repositories) {
       "",
       `- name: ${escapeMarkdown(repo.name)}`,
       `- desc: ${escapeMarkdown(repo.description || "No description")}`,
+      `- pinned on profile: ${pinnedRepositories === null ? "Unavailable" : pinnedRepositoryNames.has(repo.name) ? "Yes" : "No"}`,
       `- url: ${repo.html_url}`,
       `- created: ${formatEasternTimestamp(repo.created_at)}`,
       `- last updated: ${formatEasternTimestamp(repo.updated_at)}`,
