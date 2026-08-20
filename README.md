@@ -12,6 +12,8 @@ A simple website that turns any GitHub user's public repositories into a clean M
 * Audit repository names for consistency, length, and overly generic naming
 * Audit descriptions for missing context, placeholders, length, and status labels
 * Show audit findings separately from the Markdown report
+* Sort audit results from lowest to highest score and explain the score ranges
+* Display the current description within each audit result
 * Generate AI-ready prompts for suggested names and descriptions
 * Copy the generated Markdown
 * Download the result as a `.md` file

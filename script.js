@@ -209,6 +209,8 @@ function renderAudits(repositories) {
     }
   }
 
+  auditsNeedingAttention.sort(compareAuditsByScore);
+
   auditSummary.textContent =
     `${auditsNeedingAttention.length} of ${repositories.length} repositories ` +
     "have name or description suggestions.";
@@ -246,6 +248,22 @@ function auditRepository(repo) {
     issues,
     recommendations,
   };
+}
+
+/**
+ * compares repository audits with the lowest score first
+ * @param {Object} auditA first repository audit to compare
+ * @param {Object} auditB second repository audit to compare
+ * @returns {number} sort order for the two repository audits
+ */
+function compareAuditsByScore(auditA, auditB) {
+  const scoreDifference = auditA.audit.score - auditB.audit.score;
+
+  if (scoreDifference !== 0) {
+    return scoreDifference;
+  }
+
+  return compareCreationDatesNewestFirst(auditA.repo, auditB.repo);
 }
 
 /**
@@ -348,6 +366,7 @@ function createAuditCard(repo, audit) {
   const heading = document.createElement("h3");
   const link = document.createElement("a");
   const score = document.createElement("span");
+  const currentDescription = document.createElement("p");
 
   card.className = "audit-card";
   link.href = repo.html_url;
@@ -358,6 +377,9 @@ function createAuditCard(repo, audit) {
   score.textContent = `${audit.score}/100`;
   heading.append(link, score);
   card.appendChild(heading);
+  currentDescription.className = "current-description";
+  currentDescription.textContent = `Current description: ${repo.description || "No description"}`;
+  card.appendChild(currentDescription);
   appendAuditList(card, "Findings", audit.issues);
   appendAuditList(card, "Suggestions", audit.recommendations);
 
