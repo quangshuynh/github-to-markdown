@@ -27,7 +27,7 @@ public repositories: 2
 
 - name: example-one
 - desc: Example repository description
-- url: https://github.com/quangshuynh/example-one
+- url: https://github.com/burg3rman22/example-one
 - created: Jan 15, 2025, 10:30:00 AM EST
 - last updated: Jun 20, 2025, 4:45:00 PM EDT
 - last pushed: Jun 20, 2025, 4:45:00 PM EDT
@@ -44,7 +44,7 @@ public repositories: 2
 
 - name: example-two
 - desc: No description
-- url: https://github.com/quangshuynh/example-two
+- url: https://github.com/burg3rman22/example-two
 - created: Aug 4, 2023, 9:15:00 AM EDT
 - last updated: Feb 10, 2025, 1:20:00 PM EST
 - last pushed: Feb 10, 2025, 1:20:00 PM EST
