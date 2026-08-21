@@ -47,6 +47,16 @@ The profile score aggregates those results and adds portfolio focus. Every findi
 Unknown README data receives a neutral score and is explicitly marked unverified. The app does not invent README results or AI-generated descriptions.
 When structural README data is available, each repository audit card shows a checklist of detected and missing documentation elements alongside its README subscore.
 
+## JSON report API
+
+Other tools can consume the same normalized public repository data used by the browser:
+
+```text
+GET /api/report?user=quangshuynh
+```
+
+The endpoint returns the username, public repository count, pinned repository names, and serialized public metadata for each repository. It requires the server-side `GITHUB_TOKEN`, performs no HTML scraping, and never includes credentials or private repositories in responses.
+
 ## Markdown export
 
 Markdown remains a first-class feature. The export view supports:

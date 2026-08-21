@@ -663,15 +663,7 @@ function createReadmeChecklist(readme, readmeScore) {
  * @returns {string} readable readme status
  */
 function formatReadmeStatus(readme) {
-  if (readme.present === null) return "unverified";
-  if (!readme.present) return "missing";
-  if (readme.size !== null && readme.size < 500) return "short";
-  if (readme.sections) {
-    const coreCount = [readme.sections.overview, readme.sections.installation, readme.sections.usage].filter(Boolean).length;
-    if (coreCount < 2) return "needs structure";
-    if (coreCount === 3 && (readme.sections.examples || readme.hasImage)) return "comprehensive";
-  }
-  return "present";
+  return GitHubAudit.formatReadmeStatus(readme).replaceAll("_", " ");
 }
 
 /**

@@ -306,6 +306,44 @@
     };
   }
 
+  function formatReadmeStatus(readme) {
+    if (!readme || readme.present === null) return "unverified";
+    if (!readme.present) return "missing";
+    if (readme.size !== null && readme.size < 500) return "short";
+    if (readme.sections) {
+      const coreCount = [readme.sections.overview, readme.sections.installation, readme.sections.usage].filter(Boolean).length;
+      if (coreCount < 2) return "needs_structure";
+      if (coreCount === 3 && (readme.sections.examples || readme.hasImage)) return "comprehensive";
+    }
+    return "present";
+  }
+
+  function createReport(username, repositories) {
+    return {
+      username,
+      public_repositories: repositories.length,
+      pinned_repositories: repositories.filter((repository) => repository.pinned === true).map((repository) => repository.name),
+      repositories: repositories.map((repository) => ({
+        name: repository.name,
+        description: repository.description || null,
+        url: repository.url,
+        pinned: repository.pinned === true,
+        created_at: repository.createdAt,
+        updated_at: repository.updatedAt,
+        pushed_at: repository.pushedAt,
+        primary_language: repository.language || null,
+        license: repository.license || null,
+        topics: repository.topics,
+        stars: repository.stars,
+        forks: repository.forks,
+        open_issues: repository.openIssues,
+        readme_status: formatReadmeStatus(repository.readme),
+        archived: repository.archived,
+        forked: repository.fork,
+      })),
+    };
+  }
+
   /**
    * calculates a repository presentation and discoverability audit
    * @param {Object} repository normalized repository data
@@ -573,11 +611,18 @@
    */
   function parseUsernameFromSearch(search) {
     const username = new URLSearchParams(search).get("user")?.trim() || "";
-    return /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(username) ? username : null;
+    return isValidUsername(username) ? username : null;
+  }
+
+  function isValidUsername(username) {
+    return /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(username);
   }
 
   return {
+    createReport,
+    formatReadmeStatus,
     generateRecommendations,
+    isValidUsername,
     parseUsernameFromSearch,
     scoreDescription,
     scoreDiscoverability,
