@@ -4,17 +4,15 @@
 
 GitProfileLens analyzes your public GitHub repositories and helps you understand how your developer portfolio is presented. It identifies weak repository metadata, surfaces actionable improvements, lets you explore repository information, and exports your GitHub data to clean Markdown.
 
-[Open the live demo](https://quangshuynh.github.io/github-to-markdown/)
-
-_The live demo still uses the current `github-to-markdown` repository path. Update this link after the GitHub repository rename and Pages redeployment._
+[Open the live demo](https://quangshuynh.github.io/gitprofilelens/)
 
 ![GitProfileLens overview showing the profile score and prioritized recommendations](docs/screenshot.png)
 
 ## Product areas
 
-- **Profile Audit** — Analyze how a developer's public repositories are presented and discovered.
-- **Repository Explorer** — Fetch and inspect useful public repository information in one place.
-- **Markdown Export** — Generate clean, configurable Markdown from the fetched repository data.
+- **Profile Audit** - Analyze how a developer's public repositories are presented and discovered.
+- **Repository Explorer** - Fetch and inspect useful public repository information in one place.
+- **Markdown Export** - Generate clean, configurable Markdown from the fetched repository data.
 
 ## Key features
 
