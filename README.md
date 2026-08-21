@@ -10,9 +10,9 @@ GitProfileLens analyzes your public GitHub repositories and helps you understand
 
 ## Product areas
 
-- **Profile Audit** — Analyze how a developer's public repositories are presented and discovered.
-- **Repository Explorer** — Fetch and inspect useful public repository information in one place.
-- **Markdown Export** — Generate clean, configurable Markdown from the fetched repository data.
+- **Profile Audit** - Analyze how a developer's public repositories are presented and discovered.
+- **Repository Explorer** - Fetch and inspect useful public repository information in one place.
+- **Markdown Export** - Generate clean, configurable Markdown from the fetched repository data.
 
 ## Key features
 
