@@ -3,68 +3,118 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Export GitHub repository information to Markdown and audit repository names and descriptions." />
-  <title>GitHub → Markdown</title>
+  <meta name="description" content="Analyze your GitHub profile, audit repository presentation, and discover actionable ways to improve your developer portfolio." />
+  <meta name="application-name" content="GitProfileLens" />
+  <meta property="og:title" content="GitProfileLens — See your GitHub profile through a different lens" />
+  <meta property="og:description" content="Analyze repository presentation and discoverability, explore public repository data, and export it to Markdown." />
+  <meta property="og:type" content="website" />
+  <title>GitProfileLens — GitHub Profile and Portfolio Analysis</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="container">
-    <section class="card">
-      <p class="eyebrow">GitHub → Markdown</p>
-      <h1>Export a GitHub profile's repositories</h1>
-      <p class="subtitle">
-        Generate a Markdown repository report and separately audit repository names and descriptions.
-      </p>
-
-      <form id="github-form">
+    <header class="hero">
+      <p class="brand-name">GitProfileLens</p>
+      <h1>See your GitHub profile through a different lens.</h1>
+      <p class="subtitle">Analyze your public repositories, uncover presentation and discoverability issues, and get actionable recommendations for improving your GitHub portfolio.</p>
+      <div class="product-pillars" aria-label="GitProfileLens features">
+        <span>Profile audit</span>
+        <span>Repository explorer</span>
+        <span>Markdown export</span>
+      </div>
+      <form id="github-form" class="search-form">
         <label for="username">GitHub username</label>
         <div class="input-row">
-          <input
-            id="username"
-            name="username"
-            type="text"
-            placeholder="quangshuynh"
-            autocomplete="off"
-            required
-          />
-          <button id="generate-button" type="submit">Generate</button>
+          <input id="username" name="username" type="text" placeholder="quangshuynh" autocomplete="off" required />
+          <button id="generate-button" type="submit">Analyze profile</button>
         </div>
       </form>
-
       <p id="status" class="status" aria-live="polite"></p>
+    </header>
 
-      <section id="result-section" class="result-section" hidden>
-        <div class="result-header">
-          <h2>Markdown output</h2>
-          <div class="actions">
-            <button id="copy-button" class="secondary" type="button">Copy</button>
-            <button id="download-button" class="secondary" type="button">
-              Download .md
-            </button>
+    <section id="result-section" class="results" hidden>
+      <div class="profile-bar">
+        <div class="profile-identity">
+          <img id="profile-avatar" class="avatar" alt="" />
+          <div>
+            <p id="profile-name" class="profile-name"></p>
+            <a id="profile-link" class="muted-link" target="_blank" rel="noopener noreferrer"></a>
           </div>
         </div>
-        <textarea id="output" readonly spellcheck="false"></textarea>
+        <button id="share-button" class="secondary" type="button">Copy share link</button>
+      </div>
+
+      <nav class="tabs" aria-label="Profile results">
+        <button class="tab is-active" type="button" role="tab" aria-selected="true" data-tab="overview">Overview</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="audit">Audit</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="repositories">Repositories</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="markdown">Markdown export</button>
+      </nav>
+
+      <section id="overview-panel" class="tab-panel" role="tabpanel">
+        <div class="score-layout">
+          <article class="overall-score">
+            <p>GitHub Profile Score</p>
+            <strong><span id="overall-score">0</span><small>/100</small></strong>
+            <p class="score-disclaimer">Measures public portfolio presentation and discoverability—not engineering skill.</p>
+          </article>
+          <div id="category-scores" class="category-scores"></div>
+        </div>
+        <section class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">Prioritized from your data</p><h2>Highest-impact improvements</h2></div>
+          </div>
+          <div id="recommendation-list" class="recommendation-list"></div>
+        </section>
+        <details class="methodology">
+          <summary>How scoring works</summary>
+          <p>Scores use deterministic checks for names, descriptions, root READMEs, topics, licenses, demo links, update recency, and portfolio focus. Unknown README data receives a neutral score and is labeled as unverified.</p>
+        </details>
       </section>
 
-      <section id="audit-section" class="audit-section" hidden>
-        <div class="audit-header">
-          <div>
-            <p class="eyebrow">Separate from your Markdown report</p>
-            <h2>Name and description audit</h2>
-          </div>
-          <p id="audit-summary" class="audit-summary"></p>
+      <section id="audit-panel" class="tab-panel" role="tabpanel" hidden>
+        <div class="section-heading">
+          <div><p class="eyebrow">Lowest scores first</p><h2>Repository audit</h2></div>
+          <p id="audit-summary" class="summary-text"></p>
         </div>
-        <p class="audit-note">
-          Suggestions are generated with local quality checks. Expand an AI prompt to request a contextual rewrite from your preferred AI assistant.
-        </p>
-        <p class="rating-guide">
-          Scores: 90–100 = strong, 70–89 = minor improvements, below 70 = needs attention. Lower-rated repositories appear first.
-        </p>
+        <p class="rating-guide">90–100 strong · 70–89 minor improvements · below 70 needs attention</p>
         <div id="audit-list" class="audit-list"></div>
       </section>
+
+      <section id="repositories-panel" class="tab-panel" role="tabpanel" hidden>
+        <div class="section-heading">
+          <div><p class="eyebrow">Fetched GitHub data</p><h2>Repositories</h2></div>
+          <p id="repository-summary" class="summary-text"></p>
+        </div>
+        <p class="panel-help">Select repositories here to use the “selected only” Markdown option.</p>
+        <div id="repository-list" class="repository-list"></div>
+      </section>
+
+      <section id="markdown-panel" class="tab-panel" role="tabpanel" hidden>
+        <div class="section-heading export-heading">
+          <div><p class="eyebrow">Preview and export</p><h2>Markdown report</h2></div>
+          <div class="actions">
+            <button id="copy-button" class="secondary" type="button">Copy</button>
+            <button id="download-button" class="secondary" type="button">Download .md</button>
+          </div>
+        </div>
+        <fieldset class="export-options">
+          <legend>Include</legend>
+          <label><input id="include-details" type="checkbox" checked /> Full repository details</label>
+          <label><input id="pinned-only" type="checkbox" /> Pinned repositories only</label>
+          <label><input id="selected-only" type="checkbox" /> Selected repositories only</label>
+        </fieldset>
+        <p id="export-summary" class="panel-help"></p>
+        <textarea id="output" readonly spellcheck="false" aria-label="Generated Markdown"></textarea>
+      </section>
     </section>
+    <footer class="footer">
+      <strong>GitProfileLens</strong>
+      <span>Independent developer tool. Not affiliated with or endorsed by GitHub.</span>
+    </footer>
   </main>
 
+  <script src="audit.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

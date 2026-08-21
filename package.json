@@ -1,0 +1,10 @@
+{
+  "name": "gitprofilelens",
+  "description": "Analyze GitHub profile presentation and discoverability, explore repositories, and export repository data to Markdown.",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check audit.js && node --check script.js && node --check api/pinned-repositories.js"
+  }
+}

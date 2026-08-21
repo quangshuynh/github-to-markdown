@@ -3,20 +3,64 @@ const usernameInput = document.querySelector("#username");
 const generateButton = document.querySelector("#generate-button");
 const statusEl = document.querySelector("#status");
 const resultSection = document.querySelector("#result-section");
-const output = document.querySelector("#output");
-const copyButton = document.querySelector("#copy-button");
-const downloadButton = document.querySelector("#download-button");
-const auditSection = document.querySelector("#audit-section");
+const profileAvatar = document.querySelector("#profile-avatar");
+const profileName = document.querySelector("#profile-name");
+const profileLink = document.querySelector("#profile-link");
+const shareButton = document.querySelector("#share-button");
+const overallScore = document.querySelector("#overall-score");
+const categoryScores = document.querySelector("#category-scores");
+const recommendationList = document.querySelector("#recommendation-list");
 const auditSummary = document.querySelector("#audit-summary");
 const auditList = document.querySelector("#audit-list");
+const repositorySummary = document.querySelector("#repository-summary");
+const repositoryList = document.querySelector("#repository-list");
+const output = document.querySelector("#output");
+const exportSummary = document.querySelector("#export-summary");
+const includeDetailsInput = document.querySelector("#include-details");
+const pinnedOnlyInput = document.querySelector("#pinned-only");
+const selectedOnlyInput = document.querySelector("#selected-only");
+const copyButton = document.querySelector("#copy-button");
+const downloadButton = document.querySelector("#download-button");
+const tabButtons = document.querySelectorAll("[data-tab]");
+const tabPanels = document.querySelectorAll(".tab-panel");
 
-let currentUsername = "";
+const appState = {
+  user: null,
+  repositories: [],
+  audits: [],
+  supplemental: null,
+};
 
-form.addEventListener("submit", async (event) => {
+form.addEventListener("submit", handleFormSubmit);
+shareButton.addEventListener("click", copyShareLink);
+copyButton.addEventListener("click", copyMarkdown);
+downloadButton.addEventListener("click", downloadMarkdown);
+includeDetailsInput.addEventListener("change", refreshMarkdown);
+pinnedOnlyInput.addEventListener("change", refreshMarkdown);
+selectedOnlyInput.addEventListener("change", refreshMarkdown);
+
+for (const tabButton of tabButtons) {
+  tabButton.addEventListener("click", handleTabClick);
+}
+
+initializeFromUrl();
+
+/**
+ * loads a profile when the form is submitted
+ * @param {SubmitEvent} event browser form submission event
+ * @returns {Promise<void>} no return value
+ */
+async function handleFormSubmit(event) {
   event.preventDefault();
+  await loadProfile(usernameInput.value.trim());
+}
 
-  const username = usernameInput.value.trim();
-
+/**
+ * loads and renders github profile data for a username
+ * @param {string} username github username
+ * @returns {Promise<void>} no return value
+ */
+async function loadProfile(username) {
   if (!username) {
     showError("Enter a GitHub username.");
     return;
@@ -24,82 +68,86 @@ form.addEventListener("submit", async (event) => {
 
   setLoading(true);
   resultSection.hidden = true;
-  auditSection.hidden = true;
   statusEl.classList.remove("error");
-  statusEl.textContent = `Loading @${username}...`;
+  statusEl.textContent = `Fetching public profile data for @${username}…`;
 
   try {
     const user = await fetchJson(
       `https://api.github.com/users/${encodeURIComponent(username)}`
     );
-
-    const [repositories, pinnedRepositories] = await Promise.all([
-      fetchAllRepositories(username),
-      fetchPinnedRepositories(username),
+    const [rawRepositories, supplemental] = await Promise.all([
+      fetchAllRepositories(user.login),
+      fetchSupplementalMetadata(user.login),
     ]);
+    const repositories = transformRepositories(rawRepositories, supplemental);
+    const audits = repositories.map(scoreTransformedRepository);
 
-    currentUsername = user.login;
-    output.value = createMarkdown(user.login, repositories, pinnedRepositories);
-    renderAudits(repositories);
+    appState.user = user;
+    appState.repositories = repositories;
+    appState.audits = audits;
+    appState.supplemental = supplemental;
+
+    updateShareUrl(user.login);
+    renderResults();
     resultSection.hidden = false;
-    auditSection.hidden = false;
-
-    const pinnedStatus = pinnedRepositories
-      ? ` Found ${pinnedRepositories.length} pinned repositories.`
-      : " Pinned repositories are unavailable until the serverless API is configured.";
-    statusEl.textContent =
-      `Found ${repositories.length} public repositories for @${user.login}.${pinnedStatus}`;
+    statusEl.textContent = createSuccessStatus(repositories.length, supplemental);
   } catch (error) {
     showError(error.message);
   } finally {
     setLoading(false);
   }
-});
+}
 
-copyButton.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(output.value);
+/**
+ * transforms raw github repositories into normalized application data
+ * @param {Array<Object>} repositories github rest repositories
+ * @param {Object|null} supplemental supplemental github graphql metadata
+ * @returns {Array<Object>} normalized repository data
+ */
+function transformRepositories(repositories, supplemental) {
+  const transformed = [];
 
-    const original = copyButton.textContent;
-    copyButton.textContent = "Copied!";
-
-    setTimeout(() => {
-      copyButton.textContent = original;
-    }, 1200);
-  } catch {
-    showError(
-      "Could not copy automatically. Select the Markdown and copy it manually."
-    );
+  for (const repository of repositories) {
+    transformed.push(GitHubAudit.transformRepository(repository, supplemental));
   }
-});
 
-downloadButton.addEventListener("click", () => {
-  if (!output.value) return;
+  return transformed;
+}
 
-  const blob = new Blob([output.value], {
-    type: "text/markdown;charset=utf-8",
-  });
+/**
+ * scores a normalized repository for array mapping
+ * @param {Object} repository normalized repository data
+ * @returns {Object} repository audit
+ */
+function scoreTransformedRepository(repository) {
+  return GitHubAudit.scoreRepository(repository);
+}
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+/**
+ * creates the status message shown after a successful profile fetch
+ * @param {number} repositoryCount number of public repositories fetched
+ * @param {Object|null} supplemental supplemental github metadata
+ * @returns {string} success status message
+ */
+function createSuccessStatus(repositoryCount, supplemental) {
+  if (repositoryCount === 0) {
+    return "This account has no public repositories to audit.";
+  }
 
-  link.href = url;
-  link.download = `${currentUsername || "github-user"}-repositories.md`;
+  if (supplemental === null) {
+    return `Analyzed ${repositoryCount} repositories. README and pinned data could not be verified.`;
+  }
 
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  URL.revokeObjectURL(url);
-});
+  return `Analyzed ${repositoryCount} repositories, including ${supplemental.pinnedRepositories.length} profile pins.`;
+}
 
 /**
  * fetches all public repositories owned by a github user
  * @param {string} username github username
- * @returns {Promise<Array>} public repositories belonging to the user
+ * @returns {Promise<Array<Object>>} public repositories belonging to the user
  */
 async function fetchAllRepositories(username) {
-  const allRepos = [];
+  const allRepositories = [];
   let page = 1;
   const perPage = 100;
 
@@ -107,46 +155,43 @@ async function fetchAllRepositories(username) {
     const url =
       `https://api.github.com/users/${encodeURIComponent(username)}/repos` +
       `?type=owner&sort=updated&direction=desc&per_page=${perPage}&page=${page}`;
+    const repositories = await fetchJson(url);
+    allRepositories.push(...repositories);
 
-    const repos = await fetchJson(url);
-
-    allRepos.push(...repos);
-
-    if (repos.length < perPage) {
-      break;
-    }
-
+    if (repositories.length < perPage) break;
     page += 1;
   }
 
-  return allRepos;
+  return allRepositories;
 }
 
 /**
- * fetches repository names pinned to a github user's profile
+ * fetches pinned repositories and readme metadata from the serverless api
  * @param {string} username github username
- * @returns {Promise<Array<string>|null>} pinned repository names or null when unavailable
+ * @returns {Promise<Object|null>} supplemental metadata or null when unavailable
  */
-async function fetchPinnedRepositories(username) {
+async function fetchSupplementalMetadata(username) {
   try {
     const response = await fetch(
       `/api/pinned-repositories?username=${encodeURIComponent(username)}`,
       { headers: { Accept: "application/json" } }
     );
 
-    if (!response.ok) {
+    if (!response.ok) return null;
+    const data = await response.json();
+
+    if (!Array.isArray(data.repositories) || typeof data.readmes !== "object") {
       return null;
     }
 
-    const data = await response.json();
-    return Array.isArray(data.repositories) ? data.repositories : null;
+    return { pinnedRepositories: data.repositories, readmes: data.readmes };
   } catch {
     return null;
   }
 }
 
 /**
- * fetches json data from a url and handles github api errors
+ * fetches json data and translates github api failures into useful messages
  * @param {string} url url to request
  * @returns {Promise<Object|Array>} parsed json response
  */
@@ -159,324 +204,652 @@ async function fetchJson(url) {
   });
 
   if (response.status === 404) {
-    throw new Error("GitHub user not found.");
+    throw new Error("GitHub user not found. Check the username and try again.");
   }
 
   if (response.status === 403 || response.status === 429) {
-    throw new Error(
-      "GitHub's API rate limit was reached. Try again later or add authenticated API requests."
-    );
+    const resetTime = formatRateLimitReset(response.headers.get("X-RateLimit-Reset"));
+    throw new Error(`GitHub's public API rate limit was reached.${resetTime}`);
   }
 
   if (!response.ok) {
-    throw new Error(`GitHub request failed (${response.status}).`);
+    throw new Error(`GitHub request failed (${response.status}). Try again shortly.`);
   }
 
   return response.json();
 }
 
 /**
- * creates a markdown summary from a github username and repositories
- * @param {string} username github username
- * @param {Array} repositories public github repositories
- * @param {Array<string>|null} pinnedRepositories pinned repository names or null when unavailable
- * @returns {string} formatted markdown summary
+ * formats a github rate-limit reset header for an error message
+ * @param {string|null} resetHeader unix reset timestamp header
+ * @returns {string} formatted reset-time sentence or empty string
  */
-function createMarkdown(username, repositories, pinnedRepositories = null) {
-  const repositoriesByCreationDate = [...repositories].sort(
-    compareCreationDatesNewestFirst
-  );
-  const pinnedRepositoryNames = new Set(pinnedRepositories || []);
+function formatRateLimitReset(resetHeader) {
+  if (!resetHeader) return " Try again later.";
+  const resetDate = new Date(Number(resetHeader) * 1000);
+  if (Number.isNaN(resetDate.getTime())) return " Try again later.";
+  return ` Try again after ${resetDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`;
+}
 
-  const lines = [
-    `username: ${escapeMarkdown(username)}`,
-    `public repositories: ${repositories.length}`,
-    "",
+/**
+ * renders every result view from current application state
+ * @returns {void} no return value
+ */
+function renderResults() {
+  renderProfileHeader();
+  renderOverview();
+  renderAudits();
+  renderRepositories();
+  refreshMarkdown();
+}
+
+/**
+ * renders profile identity information
+ * @returns {void} no return value
+ */
+function renderProfileHeader() {
+  const user = appState.user;
+  profileAvatar.src = user.avatar_url;
+  profileAvatar.alt = `${user.login}'s GitHub avatar`;
+  profileName.textContent = user.name || `@${user.login}`;
+  profileLink.href = user.html_url;
+  profileLink.textContent = `@${user.login}`;
+}
+
+/**
+ * renders the overall score, category scores, and portfolio recommendations
+ * @returns {void} no return value
+ */
+function renderOverview() {
+  const profileScore = GitHubAudit.scoreProfile(appState.audits);
+  const recommendations = GitHubAudit.generateRecommendations(appState.audits);
+  overallScore.textContent = profileScore.overall;
+  categoryScores.replaceChildren();
+
+  const labels = [
+    ["Repository presentation", profileScore.categories.presentation],
+    ["Descriptions", profileScore.categories.descriptions],
+    ["README quality", profileScore.categories.readme],
+    ["Discoverability", profileScore.categories.discoverability],
+    ["Maintenance", profileScore.categories.maintenance],
+    ["Portfolio focus", profileScore.categories.focus],
   ];
 
-  lines.push("# pinned repositories:", "");
+  for (const [label, score] of labels) {
+    categoryScores.appendChild(createCategoryScore(label, score));
+  }
 
-  if (pinnedRepositories === null) {
+  recommendationList.replaceChildren();
+  if (recommendations.length === 0) {
+    recommendationList.appendChild(createEmptyState("No high-impact issues were detected in the public repository data."));
+  } else {
+    for (const recommendation of recommendations) {
+      recommendationList.appendChild(createRecommendationCard(recommendation));
+    }
+  }
+}
+
+/**
+ * creates a category score display with a progress bar
+ * @param {string} label score category label
+ * @param {number} score category score
+ * @returns {HTMLElement} category score element
+ */
+function createCategoryScore(label, score) {
+  const item = document.createElement("div");
+  const heading = document.createElement("div");
+  const name = document.createElement("span");
+  const value = document.createElement("strong");
+  const track = document.createElement("div");
+  const bar = document.createElement("span");
+  item.className = "category-score";
+  heading.className = "category-score-heading";
+  name.textContent = label;
+  value.textContent = score;
+  heading.append(name, value);
+  track.className = "score-track";
+  bar.style.width = `${score}%`;
+  track.appendChild(bar);
+  item.append(heading, track);
+  return item;
+}
+
+/**
+ * creates a portfolio recommendation card
+ * @param {Object} recommendation structured portfolio recommendation
+ * @returns {HTMLElement} recommendation card
+ */
+function createRecommendationCard(recommendation) {
+  const card = document.createElement("article");
+  const top = document.createElement("div");
+  const severity = document.createElement("span");
+  const category = document.createElement("strong");
+  const reason = document.createElement("p");
+  const action = document.createElement("p");
+  const repositories = document.createElement("p");
+  card.className = "recommendation-card";
+  top.className = "recommendation-top";
+  severity.className = `severity severity-${recommendation.severity}`;
+  severity.textContent = recommendation.severity;
+  category.textContent = recommendation.category;
+  top.append(severity, category);
+  reason.textContent = recommendation.reason;
+  action.className = "recommendation-action";
+  action.textContent = recommendation.action;
+  repositories.className = "affected-repositories";
+  repositories.textContent = `Affects: ${formatRepositoryNames(recommendation.repositories)}`;
+  card.append(top, reason, action, repositories);
+  return card;
+}
+
+/**
+ * formats a concise list of repository names
+ * @param {Array<string>} names repository names
+ * @returns {string} comma-separated repository summary
+ */
+function formatRepositoryNames(names) {
+  if (names.length <= 4) return names.join(", ");
+  return `${names.slice(0, 4).join(", ")} and ${names.length - 4} more`;
+}
+
+/**
+ * renders every repository audit with the lowest score first
+ * @returns {void} no return value
+ */
+function renderAudits() {
+  const sortedAudits = [...appState.audits].sort(compareRepositoryAudits);
+  const needingAttention = sortedAudits.filter(hasAuditIssues).length;
+  auditSummary.textContent = `${needingAttention} of ${sortedAudits.length} repositories have suggestions.`;
+  auditList.replaceChildren();
+
+  if (sortedAudits.length === 0) {
+    auditList.appendChild(createEmptyState("No public repositories are available to audit."));
+    return;
+  }
+
+  for (const audit of sortedAudits) {
+    auditList.appendChild(createAuditCard(audit));
+  }
+}
+
+/**
+ * compares repository audits by score and update date
+ * @param {Object} auditA first repository audit
+ * @param {Object} auditB second repository audit
+ * @returns {number} audit sort order
+ */
+function compareRepositoryAudits(auditA, auditB) {
+  const difference = auditA.score - auditB.score;
+  if (difference !== 0) return difference;
+  return new Date(auditB.repository.updatedAt) - new Date(auditA.repository.updatedAt);
+}
+
+/**
+ * determines whether a repository audit contains actionable findings
+ * @param {Object} audit repository audit
+ * @returns {boolean} true when a non-informational finding exists
+ */
+function hasAuditIssues(audit) {
+  return audit.findings.some(isActionableFinding);
+}
+
+/**
+ * determines whether a finding is actionable
+ * @param {Object} finding structured audit finding
+ * @returns {boolean} true for non-informational findings
+ */
+function isActionableFinding(finding) {
+  return finding.severity !== "info";
+}
+
+/**
+ * creates a repository-level audit card
+ * @param {Object} audit repository audit
+ * @returns {HTMLElement} repository audit card
+ */
+function createAuditCard(audit) {
+  const repository = audit.repository;
+  const card = document.createElement("article");
+  const header = document.createElement("div");
+  const titleArea = document.createElement("div");
+  const title = document.createElement("h3");
+  const link = document.createElement("a");
+  const metadata = document.createElement("p");
+  const score = document.createElement("strong");
+  const description = document.createElement("p");
+  const facts = document.createElement("div");
+  const findings = document.createElement("div");
+  card.className = "audit-card";
+  header.className = "audit-card-header";
+  link.href = repository.url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = repository.name;
+  title.appendChild(link);
+  metadata.className = "repo-meta-line";
+  metadata.textContent = `${repository.language || "Language unknown"} · ★ ${repository.stars} · Forks ${repository.forks} · Updated ${formatShortDate(repository.updatedAt)}`;
+  titleArea.append(title, metadata);
+  score.className = `repo-score ${getScoreClass(audit.score)}`;
+  score.textContent = `${audit.score}/100`;
+  header.append(titleArea, score);
+  description.className = "current-description";
+  description.textContent = repository.description || "No description";
+  facts.className = "fact-row";
+  facts.append(
+    createFactBadge(`Topics: ${repository.topics.length || "none"}`),
+    createFactBadge(`License: ${repository.license || "none"}`),
+    createFactBadge(`README: ${formatReadmeStatus(repository.readme)}`),
+    createFactBadge(repository.pinned === null ? "Pin: unknown" : repository.pinned ? "Pinned" : "Not pinned")
+  );
+  findings.className = "finding-list";
+
+  if (audit.findings.length === 0) {
+    findings.appendChild(createEmptyState("Strong presentation: no issues detected by the current checks."));
+  } else {
+    for (const finding of audit.findings) {
+      findings.appendChild(createFindingRow(finding));
+    }
+  }
+
+  card.append(header, description, facts, findings);
+  return card;
+}
+
+/**
+ * creates a compact metadata badge
+ * @param {string} text badge text
+ * @returns {HTMLElement} metadata badge
+ */
+function createFactBadge(text) {
+  const badge = document.createElement("span");
+  badge.textContent = text;
+  return badge;
+}
+
+/**
+ * formats readme metadata for display
+ * @param {Object} readme readme metadata
+ * @returns {string} readable readme status
+ */
+function formatReadmeStatus(readme) {
+  if (readme.present === null) return "unverified";
+  if (!readme.present) return "missing";
+  if (readme.size !== null && readme.size < 500) return "short";
+  return "present";
+}
+
+/**
+ * creates a factual or advisory audit finding row
+ * @param {Object} finding structured audit finding
+ * @returns {HTMLElement} finding row
+ */
+function createFindingRow(finding) {
+  const row = document.createElement("article");
+  const heading = document.createElement("div");
+  const type = document.createElement("span");
+  const category = document.createElement("strong");
+  const reason = document.createElement("p");
+  const action = document.createElement("p");
+  row.className = "finding";
+  type.className = `finding-type ${finding.factual ? "is-factual" : "is-advisory"}`;
+  type.textContent = finding.factual ? "Factual check" : "Recommendation";
+  category.textContent = finding.category;
+  heading.append(type, category);
+  reason.textContent = finding.reason;
+  action.className = "finding-action";
+  action.textContent = `Next step: ${finding.action}`;
+  row.append(heading, reason, action);
+  return row;
+}
+
+/**
+ * returns a visual score class for a numeric score
+ * @param {number} score repository score
+ * @returns {string} css class representing the score band
+ */
+function getScoreClass(score) {
+  if (score >= 90) return "score-strong";
+  if (score >= 70) return "score-medium";
+  return "score-weak";
+}
+
+/**
+ * renders fetched repository data and selection controls
+ * @returns {void} no return value
+ */
+function renderRepositories() {
+  const repositories = [...appState.repositories].sort(compareCreationDatesNewestFirst);
+  repositorySummary.textContent = `${repositories.length} public repositories fetched.`;
+  repositoryList.replaceChildren();
+
+  if (repositories.length === 0) {
+    repositoryList.appendChild(createEmptyState("This account has no public repositories."));
+    return;
+  }
+
+  for (const repository of repositories) {
+    repositoryList.appendChild(createRepositoryCard(repository));
+  }
+}
+
+/**
+ * creates a repository data card with an export selection control
+ * @param {Object} repository normalized repository data
+ * @returns {HTMLElement} repository data card
+ */
+function createRepositoryCard(repository) {
+  const card = document.createElement("article");
+  const checkbox = document.createElement("input");
+  const content = document.createElement("div");
+  const heading = document.createElement("div");
+  const title = document.createElement("a");
+  const flags = document.createElement("span");
+  const description = document.createElement("p");
+  const metadata = document.createElement("p");
+  card.className = "repository-card";
+  checkbox.type = "checkbox";
+  checkbox.checked = repository.selected;
+  checkbox.dataset.repository = repository.name;
+  checkbox.setAttribute("aria-label", `Include ${repository.name} in selected exports`);
+  checkbox.addEventListener("change", handleRepositorySelection);
+  content.className = "repository-card-content";
+  heading.className = "repository-card-heading";
+  title.href = repository.url;
+  title.target = "_blank";
+  title.rel = "noopener noreferrer";
+  title.textContent = repository.name;
+  flags.className = "repository-flags";
+  flags.textContent = [repository.pinned ? "Pinned" : "", repository.archived ? "Archived" : "", repository.fork ? "Fork" : ""].filter(Boolean).join(" · ");
+  heading.append(title, flags);
+  description.textContent = repository.description || "No description";
+  metadata.className = "repo-meta-line";
+  metadata.textContent = `${repository.language || "Unknown language"} · ${repository.topics.length} topics · ${repository.license || "No license"} · README ${formatReadmeStatus(repository.readme)} · Updated ${formatShortDate(repository.updatedAt)}`;
+  content.append(heading, description, metadata);
+  card.append(checkbox, content);
+  return card;
+}
+
+/**
+ * updates repository selection state and the markdown preview
+ * @param {Event} event repository checkbox change event
+ * @returns {void} no return value
+ */
+function handleRepositorySelection(event) {
+  const repository = appState.repositories.find(
+    (item) => item.name === event.currentTarget.dataset.repository
+  );
+  if (repository) repository.selected = event.currentTarget.checked;
+  refreshMarkdown();
+}
+
+/**
+ * compares repository creation dates with the newest repository first
+ * @param {Object} repositoryA first repository
+ * @param {Object} repositoryB second repository
+ * @returns {number} repository sort order
+ */
+function compareCreationDatesNewestFirst(repositoryA, repositoryB) {
+  return new Date(repositoryB.createdAt) - new Date(repositoryA.createdAt);
+}
+
+/**
+ * updates markdown output from current export options
+ * @returns {void} no return value
+ */
+function refreshMarkdown() {
+  if (!appState.user) return;
+  const options = {
+    includeDetails: includeDetailsInput.checked,
+    pinnedOnly: pinnedOnlyInput.checked,
+    selectedOnly: selectedOnlyInput.checked,
+  };
+  const repositories = filterRepositoriesForExport(appState.repositories, options);
+  output.value = createMarkdown(appState.user.login, repositories, appState.supplemental, options);
+  exportSummary.textContent = `${repositories.length} repositories included in this export.`;
+  pinnedOnlyInput.disabled = appState.supplemental === null;
+}
+
+/**
+ * filters repositories according to export options
+ * @param {Array<Object>} repositories normalized repositories
+ * @param {Object} options markdown export options
+ * @returns {Array<Object>} filtered repositories
+ */
+function filterRepositoriesForExport(repositories, options) {
+  const includedRepositories = [];
+
+  for (const repository of repositories) {
+    if (options.pinnedOnly && repository.pinned !== true) continue;
+    if (options.selectedOnly && !repository.selected) continue;
+    includedRepositories.push(repository);
+  }
+
+  return includedRepositories;
+}
+
+/**
+ * creates a markdown summary from normalized repositories
+ * @param {string} username github username
+ * @param {Array<Object>} repositories normalized repositories
+ * @param {Object|null} supplemental supplemental github metadata
+ * @param {Object} options markdown export options
+ * @returns {string} formatted markdown report
+ */
+function createMarkdown(username, repositories, supplemental, options) {
+  const sortedRepositories = [...repositories].sort(compareCreationDatesNewestFirst);
+  const lines = [
+    `username: ${escapeMarkdown(username)}`,
+    `public repositories in report: ${sortedRepositories.length}`,
+    "",
+    "# pinned repositories:",
+    "",
+  ];
+  const pinnedRepositories = sortedRepositories.filter(isPinnedRepository);
+
+  if (supplemental === null) {
     lines.push("Pinned repository data unavailable.", "");
   } else if (pinnedRepositories.length === 0) {
-    lines.push("No public repositories pinned.", "");
+    lines.push("No pinned repositories included in this report.", "");
   } else {
-    for (const repositoryName of pinnedRepositories) {
-      lines.push(`- ${escapeMarkdown(repositoryName)}`);
+    for (const repository of pinnedRepositories) {
+      lines.push(`- ${escapeMarkdown(repository.name)}`);
     }
     lines.push("");
   }
 
   lines.push("# repositories:", "");
 
-  repositoriesByCreationDate.forEach((repo, index) => {
+  for (let index = 0; index < sortedRepositories.length; index += 1) {
+    const repository = sortedRepositories[index];
     lines.push(
-      `### repo ${repositories.length - index}:`,
+      `### repo ${sortedRepositories.length - index}:`,
       "",
-      `- name: ${escapeMarkdown(repo.name)}`,
-      `- desc: ${escapeMarkdown(repo.description || "No description")}`,
-      `- url: ${repo.html_url}`,
-      `- created: ${formatEasternTimestamp(repo.created_at)}`,
-      `- last updated: ${formatEasternTimestamp(repo.updated_at)}`,
-      `- last pushed: ${repo.pushed_at ? formatEasternTimestamp(repo.pushed_at) : "Never"}`,
-      `- primary language: ${escapeMarkdown(repo.language || "Not specified")}`,
-      `- license: ${escapeMarkdown(repo.license?.spdx_id || "Not specified")}`,
-      `- topics: ${escapeMarkdown(repo.topics?.join(", ") || "None")}`,
-      `- stars: ${repo.stargazers_count}`,
-      `- forks: ${repo.forks_count}`,
-      `- open issues and pull requests: ${repo.open_issues_count}`,
-      `- archived: ${repo.archived ? "Yes" : "No"}`,
-      `- forked repository: ${repo.fork ? "Yes" : "No"}`,
-      ""
+      `- name: ${escapeMarkdown(repository.name)}`,
+      `- desc: ${escapeMarkdown(repository.description || "No description")}`,
+      `- url: ${repository.url}`,
+      `- pinned on profile: ${repository.pinned === null ? "Unavailable" : repository.pinned ? "Yes" : "No"}`
     );
-  });
+
+    if (options.includeDetails) {
+      lines.push(
+        `- created: ${formatEasternTimestamp(repository.createdAt)}`,
+        `- last updated: ${formatEasternTimestamp(repository.updatedAt)}`,
+        `- last pushed: ${repository.pushedAt ? formatEasternTimestamp(repository.pushedAt) : "Never"}`,
+        `- primary language: ${escapeMarkdown(repository.language || "Not specified")}`,
+        `- license: ${escapeMarkdown(repository.license || "Not specified")}`,
+        `- topics: ${escapeMarkdown(repository.topics.join(", ") || "None")}`,
+        `- stars: ${repository.stars}`,
+        `- forks: ${repository.forks}`,
+        `- open issues and pull requests: ${repository.openIssues}`,
+        `- README: ${formatReadmeStatus(repository.readme)}`,
+        `- archived: ${repository.archived ? "Yes" : "No"}`,
+        `- forked repository: ${repository.fork ? "Yes" : "No"}`
+      );
+    }
+
+    lines.push("");
+  }
 
   return lines.join("\n");
 }
 
 /**
- * renders repository name and description audits on the page
- * @param {Array} repositories public github repositories
+ * determines whether a repository is pinned
+ * @param {Object} repository normalized repository
+ * @returns {boolean} true when pinned
+ */
+function isPinnedRepository(repository) {
+  return repository.pinned === true;
+}
+
+/**
+ * handles switching between result tabs
+ * @param {MouseEvent} event tab button click event
  * @returns {void} no return value
  */
-function renderAudits(repositories) {
-  const repositoriesByCreationDate = [...repositories].sort(
-    compareCreationDatesNewestFirst
-  );
-  const auditsNeedingAttention = [];
+function handleTabClick(event) {
+  activateTab(event.currentTarget.dataset.tab, true);
+}
 
-  for (const repo of repositoriesByCreationDate) {
-    const audit = auditRepository(repo);
+/**
+ * activates one result tab and optionally updates the url
+ * @param {string} tabName tab identifier
+ * @param {boolean} updateUrl whether to write the tab into the url
+ * @returns {void} no return value
+ */
+function activateTab(tabName, updateUrl) {
+  const validTab = ["overview", "audit", "repositories", "markdown"].includes(tabName)
+    ? tabName
+    : "overview";
 
-    if (audit.issues.length > 0) {
-      auditsNeedingAttention.push({ repo, audit });
-    }
+  for (const button of tabButtons) {
+    const active = button.dataset.tab === validTab;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
   }
 
-  auditsNeedingAttention.sort(compareAuditsByScore);
-
-  auditSummary.textContent =
-    `${auditsNeedingAttention.length} of ${repositories.length} repositories ` +
-    "have name or description suggestions.";
-  auditList.replaceChildren();
-
-  if (auditsNeedingAttention.length === 0) {
-    const message = document.createElement("p");
-    message.className = "audit-empty";
-    message.textContent = "No name or description issues found.";
-    auditList.appendChild(message);
-    return;
+  for (const panel of tabPanels) {
+    panel.hidden = panel.id !== `${validTab}-panel`;
   }
 
-  for (const { repo, audit } of auditsNeedingAttention) {
-    auditList.appendChild(createAuditCard(repo, audit));
+  if (updateUrl && appState.user) updateShareUrl(appState.user.login, validTab);
+}
+
+/**
+ * updates the current url with the audited username and active view
+ * @param {string} username github username
+ * @param {string|null} tabName optional result tab identifier
+ * @returns {void} no return value
+ */
+function updateShareUrl(username, tabName = null) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("user", username);
+  const activeTab = tabName || url.searchParams.get("view");
+
+  if (activeTab && activeTab !== "overview") {
+    url.searchParams.set("view", activeTab);
+  } else {
+    url.searchParams.delete("view");
+  }
+
+  history.replaceState(null, "", url);
+}
+
+/**
+ * initializes username and result view from url parameters
+ * @returns {void} no return value
+ */
+function initializeFromUrl() {
+  const username = GitHubAudit.parseUsernameFromSearch(window.location.search);
+  const tabName = new URLSearchParams(window.location.search).get("view") || "overview";
+  activateTab(tabName, false);
+
+  if (username) {
+    usernameInput.value = username;
+    loadProfile(username);
   }
 }
 
 /**
- * audits a repository name and description
- * @param {Object} repo github repository data
- * @returns {{score: number, issues: Array<string>, recommendations: Array<string>}} audit result
+ * copies the current shareable profile url
+ * @returns {Promise<void>} no return value
  */
-function auditRepository(repo) {
-  const nameAudit = auditRepositoryName(repo.name);
-  const descriptionAudit = auditRepositoryDescription(repo.description);
-  const issues = [...nameAudit.issues, ...descriptionAudit.issues];
-  const recommendations = [
-    ...nameAudit.recommendations,
-    ...descriptionAudit.recommendations,
-  ];
-
-  return {
-    score: Math.min(nameAudit.score, descriptionAudit.score),
-    issues,
-    recommendations,
-  };
+async function copyShareLink() {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    showTemporaryButtonText(shareButton, "Link copied");
+  } catch {
+    showError("Could not copy the link automatically. Copy it from the address bar.");
+  }
 }
 
 /**
- * compares repository audits with the lowest score first
- * @param {Object} auditA first repository audit to compare
- * @param {Object} auditB second repository audit to compare
- * @returns {number} sort order for the two repository audits
+ * copies the generated markdown preview
+ * @returns {Promise<void>} no return value
  */
-function compareAuditsByScore(auditA, auditB) {
-  const scoreDifference = auditA.audit.score - auditB.audit.score;
-
-  if (scoreDifference !== 0) {
-    return scoreDifference;
+async function copyMarkdown() {
+  try {
+    await navigator.clipboard.writeText(output.value);
+    showTemporaryButtonText(copyButton, "Copied");
+  } catch {
+    showError("Could not copy automatically. Select the Markdown and copy it manually.");
   }
-
-  return compareCreationDatesNewestFirst(auditA.repo, auditB.repo);
 }
 
 /**
- * audits the readability and consistency of a repository name
- * @param {string} name github repository name
- * @returns {{score: number, issues: Array<string>, recommendations: Array<string>}} audit result
+ * downloads the generated markdown as a file
+ * @returns {void} no return value
  */
-function auditRepositoryName(name) {
-  const issues = [];
-  const recommendations = [];
-  let score = 100;
-
-  if (name.length > 50) {
-    score -= 20;
-    issues.push("Name is longer than 50 characters");
-    recommendations.push("Shorten the name so it is easier to scan and type");
-  }
-
-  if (/_/.test(name)) {
-    score -= 10;
-    issues.push("Name uses underscores");
-    recommendations.push("Consider lowercase kebab-case for consistency");
-  }
-
-  if (/[A-Z]/.test(name)) {
-    score -= 5;
-    issues.push("Name contains uppercase letters");
-    recommendations.push("Consider lowercase kebab-case for consistency");
-  }
-
-  if (/^(test|testing|project|repo|repository|demo|sample)([-_]?\d*)?$/i.test(name)) {
-    score -= 35;
-    issues.push("Name is too generic to communicate the project's purpose");
-    recommendations.push("Choose a short, distinctive name related to what the project does");
-  }
-
-  return { score: Math.max(score, 0), issues, recommendations };
-}
-
-/**
- * audits the clarity and completeness of a repository description
- * @param {string|null} description github repository description
- * @returns {{score: number, issues: Array<string>, recommendations: Array<string>}} audit result
- */
-function auditRepositoryDescription(description) {
-  const cleanedDescription = (description || "").trim();
-  const issues = [];
-  const recommendations = [];
-  let score = 100;
-
-  if (!cleanedDescription) {
-    return {
-      score: 0,
-      issues: ["Description is missing"],
-      recommendations: ["Add one sentence explaining what the repository does and who it helps"],
-    };
-  }
-
-  if (/^(test|testing|todo|tbd|wip|sample|demo)$/i.test(cleanedDescription)) {
-    score -= 50;
-    issues.push("Description looks like placeholder text");
-    recommendations.push("Replace the placeholder with the project's purpose and key capability");
-  }
-
-  if (cleanedDescription.length < 30) {
-    score -= 25;
-    issues.push(`Description is only ${cleanedDescription.length} characters`);
-    recommendations.push("Add enough context to understand the project without opening it");
-  }
-
-  if (cleanedDescription.length > 160) {
-    score -= 15;
-    issues.push(`Description is ${cleanedDescription.length} characters and may be hard to scan`);
-    recommendations.push("Shorten it to one focused sentence of 160 characters or fewer");
-  }
-
-  if (/^\s*\((wip|broken|deprecated|archived)\)/i.test(cleanedDescription)) {
-    score -= 15;
-    issues.push("Description begins with a temporary status label");
-    recommendations.push("Use GitHub settings or topics for status and describe the project's purpose here");
-  }
-
-  if (/^[a-z]/.test(cleanedDescription)) {
-    score -= 5;
-    issues.push("Description starts with a lowercase letter");
-    recommendations.push("Start the description with a capital letter");
-  }
-
-  return { score: Math.max(score, 0), issues, recommendations };
-}
-
-/**
- * creates a visual card for a repository audit
- * @param {Object} repo github repository data
- * @param {Object} audit repository audit result
- * @returns {HTMLElement} completed repository audit card
- */
-function createAuditCard(repo, audit) {
-  const card = document.createElement("article");
-  const heading = document.createElement("h3");
+function downloadMarkdown() {
+  if (!output.value) return;
+  const blob = new Blob([output.value], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  const score = document.createElement("span");
-  const currentDescription = document.createElement("p");
-
-  card.className = "audit-card";
-  link.href = repo.html_url;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = repo.name;
-  score.className = "audit-score";
-  score.textContent = `${audit.score}/100`;
-  heading.append(link, score);
-  card.appendChild(heading);
-  currentDescription.className = "current-description";
-  currentDescription.textContent = `Current description: ${repo.description || "No description"}`;
-  card.appendChild(currentDescription);
-  appendAuditList(card, "Findings", audit.issues);
-  appendAuditList(card, "Suggestions", audit.recommendations);
-
-  const prompt = document.createElement("details");
-  const promptHeading = document.createElement("summary");
-  const promptText = document.createElement("p");
-  promptHeading.textContent = "AI rewrite prompt";
-  promptText.textContent = createRewritePrompt(repo);
-  prompt.append(promptHeading, promptText);
-  card.appendChild(prompt);
-
-  return card;
+  link.href = url;
+  link.download = `${appState.user?.login || "github-user"}-repositories.md`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 /**
- * appends a labeled list of audit messages to a card
- * @param {HTMLElement} card audit card receiving the list
- * @param {string} label heading displayed above the messages
- * @param {Array<string>} messages audit messages to display
+ * temporarily changes button text to acknowledge an action
+ * @param {HTMLButtonElement} button button to update
+ * @param {string} temporaryText temporary button label
  * @returns {void} no return value
  */
-function appendAuditList(card, label, messages) {
-  const heading = document.createElement("h4");
-  const list = document.createElement("ul");
-  heading.textContent = label;
-
-  for (const message of messages) {
-    const item = document.createElement("li");
-    item.textContent = message;
-    list.appendChild(item);
-  }
-
-  card.append(heading, list);
+function showTemporaryButtonText(button, temporaryText) {
+  const originalText = button.textContent;
+  button.textContent = temporaryText;
+  window.setTimeout(function restoreButtonText() {
+    button.textContent = originalText;
+  }, 1200);
 }
 
 /**
- * creates an ai-ready prompt for improving a repository name and description
- * @param {Object} repo github repository data
- * @returns {string} prompt containing repository context and rewrite constraints
+ * creates a reusable empty-state message
+ * @param {string} message empty-state message
+ * @returns {HTMLElement} empty-state element
  */
-function createRewritePrompt(repo) {
-  const topics = repo.topics?.join(", ") || "none";
-  return `Suggest a clear lowercase kebab-case repository name and one specific GitHub description of 30–160 characters. Current name: ${repo.name}. Current description: ${repo.description || "none"}. Primary language: ${repo.language || "unknown"}. Topics: ${topics}. Return the name and description only.`;
+function createEmptyState(message) {
+  const emptyState = document.createElement("p");
+  emptyState.className = "empty-state";
+  emptyState.textContent = message;
+  return emptyState;
 }
 
 /**
- * compares repository creation dates with the newest repository first
- * @param {Object} repoA first repository to compare
- * @param {Object} repoB second repository to compare
- * @returns {number} sort order for the two repositories
+ * formats a timestamp as a concise local date
+ * @param {string} timestamp iso timestamp
+ * @returns {string} concise date
  */
-function compareCreationDatesNewestFirst(repoA, repoB) {
-  return new Date(repoB.created_at) - new Date(repoA.created_at);
+function formatShortDate(timestamp) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(timestamp));
 }
 
 /**
@@ -510,13 +883,14 @@ function escapeMarkdown(value) {
 }
 
 /**
- * updates the generate button loading state
- * @param {boolean} isLoading whether the application is currently loading
+ * updates the form loading state
+ * @param {boolean} isLoading whether the application is loading
  * @returns {void} no return value
  */
 function setLoading(isLoading) {
   generateButton.disabled = isLoading;
-  generateButton.textContent = isLoading ? "Generating..." : "Generate";
+  usernameInput.disabled = isLoading;
+  generateButton.textContent = isLoading ? "Analyzing…" : "Analyze profile";
 }
 
 /**

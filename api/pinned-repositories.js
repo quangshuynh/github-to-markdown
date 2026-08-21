@@ -32,7 +32,7 @@ async function pinnedRepositoriesHandler(request, response) {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
         "Content-Type": "application/json",
-        "User-Agent": "github-to-markdown",
+        "User-Agent": "gitprofilelens",
       },
       body: JSON.stringify({
         query: `
@@ -42,6 +42,20 @@ async function pinnedRepositoriesHandler(request, response) {
                 nodes {
                   ... on Repository {
                     name
+                  }
+                }
+              }
+              repositories(first: 100, ownerAffiliations: OWNER, privacy: PUBLIC) {
+                nodes {
+                  name
+                  readmeMarkdown: object(expression: "HEAD:README.md") {
+                    ... on Blob { byteSize }
+                  }
+                  readmeUppercase: object(expression: "HEAD:README") {
+                    ... on Blob { byteSize }
+                  }
+                  readmeLowercase: object(expression: "HEAD:readme.md") {
+                    ... on Blob { byteSize }
                   }
                 }
               }
@@ -68,8 +82,11 @@ async function pinnedRepositoriesHandler(request, response) {
     const repositories = data.data.user.pinnedItems.nodes.map(
       getRepositoryName
     );
+    const readmes = Object.fromEntries(
+      data.data.user.repositories.nodes.map(getReadmeEntry)
+    );
     response.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
-    response.status(200).json({ repositories });
+    response.status(200).json({ repositories, readmes });
   } catch {
     response.status(502).json({ error: "GitHub could not return pinned repositories." });
   }
@@ -82,6 +99,22 @@ async function pinnedRepositoriesHandler(request, response) {
  */
 function getRepositoryName(repository) {
   return repository.name;
+}
+
+/**
+ * converts a github repository node into a readme metadata entry
+ * @param {Object} repository github graphql repository node
+ * @returns {Array} repository name and readme metadata entry
+ */
+function getReadmeEntry(repository) {
+  const readme =
+    repository.readmeMarkdown ||
+    repository.readmeUppercase ||
+    repository.readmeLowercase;
+  return [
+    repository.name,
+    { present: Boolean(readme), size: readme?.byteSize ?? null },
+  ];
 }
 
 module.exports = pinnedRepositoriesHandler;

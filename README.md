@@ -1,193 +1,155 @@
-# GitHub → Markdown
+# GitProfileLens
 
-A simple website that turns any GitHub user's public repositories into a clean Markdown summary that you can copy or download as a `.md` file.
+> See your GitHub profile through a different lens.
 
-## Features
+GitProfileLens analyzes your public GitHub repositories and helps you understand how your developer portfolio is presented. It identifies weak repository metadata, surfaces actionable improvements, lets you explore repository information, and exports your GitHub data to clean Markdown.
 
-* Search by GitHub username
-* Fetch all public repositories
-* Sort repositories by creation date, with the oldest repository at the bottom
-* Display repository names, descriptions, dates, and activity metadata
-* Include profile-pinned repositories when the serverless API is configured
-* Generate a clean Markdown summary
-* Audit repository names for consistency, length, and overly generic naming
-* Audit descriptions for missing context, placeholders, length, and status labels
-* Show audit findings separately from the Markdown report
-* Sort audit results from lowest to highest score and explain the score ranges
-* Display the current description within each audit result
-* Generate AI-ready prompts for suggested names and descriptions
-* Copy the generated Markdown
-* Download the result as a `.md` file
-* No backend or dependencies required
+[Open the live demo](https://quangshuynh.github.io/github-to-markdown/)
 
-## Description Audit
+_The live demo still uses the current `github-to-markdown` repository path. Update this link after the GitHub repository rename and Pages redeployment._
 
-The page displays name and description suggestions in a separate section after generating the standard Markdown report. Audit findings are never added to copied or downloaded Markdown.
+![GitProfileLens overview showing the profile score and prioritized recommendations](docs/screenshot.png)
 
-The checks run locally without an API key. Each flagged repository includes an AI-ready prompt that can be pasted into an AI assistant. A future direct AI integration should use a backend or serverless function so credentials are not exposed in browser code.
+## Product areas
 
-## Output
+- **Profile Audit** — Analyze how a developer's public repositories are presented and discovered.
+- **Repository Explorer** — Fetch and inspect useful public repository information in one place.
+- **Markdown Export** — Generate clean, configurable Markdown from the fetched repository data.
 
-The generated Markdown looks like this:
+## Key features
 
-```md
-username: burg3rman22
-public repositories: 2
+- Load every public repository owned by a GitHub user with pagination.
+- Open shareable audits such as `/?user=quangshuynh`.
+- Calculate an overall portfolio score and six explainable category scores.
+- Audit repository names, descriptions, READMEs, topics, licenses, demos, and maintenance signals.
+- Separate factual checks from subjective presentation recommendations.
+- Rank the five highest-impact portfolio improvements.
+- Inspect all fetched repository data without hiding it behind the audit.
+- Detect pinned repositories and root README metadata through an optional serverless GraphQL integration.
+- Preview, copy, and download Markdown.
+- Export all, pinned-only, or manually selected repositories with full or compact details.
+- Handle nonexistent users, empty accounts, rate limits, and unavailable supplemental data.
 
-# repositories:
+## How the audit works
 
-### repo 2:
+The scoring implementation lives in `audit.js` and is shared by the browser and automated tests. Each repository receives category scores for:
 
-- name: example-one
-- desc: Example repository description
-- url: https://github.com/burg3rman22/example-one
-- created: Jan 15, 2025, 10:30:00 AM EST
-- last updated: Jun 20, 2025, 4:45:00 PM EDT
-- last pushed: Jun 20, 2025, 4:45:00 PM EDT
-- primary language: JavaScript
-- license: MIT
-- topics: github, markdown
-- stars: 12
-- forks: 3
-- open issues and pull requests: 1
-- archived: No
-- forked repository: No
+- Repository presentation: name clarity and consistency.
+- Descriptions: specificity, useful length, placeholder text, and basic polish.
+- README quality: presence and a conservative size check.
+- Discoverability: topics, license, and a demo link where it is likely useful.
+- Maintenance: push recency while treating archived projects as intentionally complete.
 
-### repo 1:
+The profile score aggregates those results and adds portfolio focus. Every finding contains a severity, reason, suggested action, and a flag indicating whether it is a factual check or subjective recommendation.
 
-- name: example-two
-- desc: No description
-- url: https://github.com/burg3rman22/example-two
-- created: Aug 4, 2023, 9:15:00 AM EDT
-- last updated: Feb 10, 2025, 1:20:00 PM EST
-- last pushed: Feb 10, 2025, 1:20:00 PM EST
-- primary language: Not specified
-- license: Not specified
-- topics: None
-- stars: 0
-- forks: 0
-- open issues and pull requests: 0
-- archived: No
-- forked repository: No
-```
+Unknown README data receives a neutral score and is explicitly marked unverified. The app does not invent README results or AI-generated descriptions.
 
-## Running Locally
+## Markdown export
 
-Clone the repository:
+Markdown remains a first-class feature. The export view supports:
+
+- Full repository metadata or a compact name/description/link format.
+- Only pinned repositories.
+- Only repositories selected in the Repositories view.
+- Clipboard copy and `.md` download.
+
+Audit findings are not inserted into the Markdown report.
+
+## Local setup
+
+No client build step or framework is required.
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/github-to-markdown.git
 cd github-to-markdown
-```
-
-You can open `index.html` directly in your browser.
-
-Alternatively, start a simple local server with Python:
-
-```bash
 python -m http.server 8000
 ```
 
-Then visit:
+Open `http://localhost:8000`. Core repository fetching, scoring, browsing, and Markdown export work without login. README and pinned-repository checks appear as unverified unless the serverless integration is running.
 
-```text
-http://localhost:8000
-```
+### Full local setup
 
-## Pinned Repository Setup
-
-Pinned repository data uses the serverless function in `api/pinned-repositories.js`. Create `.env.local` with a fine-grained GitHub token, then run the project with the Vercel CLI:
+Create `.env.local`:
 
 ```text
 GITHUB_TOKEN=your_fine_grained_github_token
 ```
 
+Then use the Vercel CLI:
+
 ```bash
 vercel dev
 ```
 
-For production, deploy to Vercel and add `GITHUB_TOKEN` in the project's environment variables. Never commit the token. If the function or token is unavailable, reports and audits still work and pin data is labeled unavailable.
+Never commit `.env.local` or a GitHub token. Local environment files are ignored by Git.
 
-## Deploying to GitHub Pages
+## Architecture
 
-This project is completely static, so it can be hosted directly with GitHub Pages. You do **not** need to install a `gh-pages` package.
+```text
+github-to-markdown/              # current repository name before rename
+|-- api/
+|   `-- pinned-repositories.js  # authenticated GraphQL serverless function
+|-- tests/
+|   `-- audit.test.js           # scoring, recommendation, URL, and transform tests
+|-- audit.js                     # deterministic scoring and data transformation
+|-- index.html                   # accessible application structure
+|-- script.js                    # fetching, state, rendering, URL, and export behavior
+|-- styles.css                   # responsive visual system
+`-- package.json                 # test and syntax-check scripts
+```
 
-GitHub Pages cannot execute the serverless function. Reports and audits work there, but pinned repository data requires a deployment that supports the function, such as Vercel.
+The browser fetches public users and paginated repositories from GitHub REST. The optional Vercel function makes one authenticated GraphQL request for up to 100 root README checks and the profile's pinned repositories. It caches successful responses for five minutes.
 
-First, make sure your project has been pushed to GitHub:
+## Tests
 
 ```bash
-git add .
-git commit -m "Add GitHub to Markdown website"
-git push
+npm test
+npm run check
 ```
 
-Then:
+Tests cover meaningful scoring behavior, vague-description guidance, missing presentation fundamentals, recommendation ranking, empty profiles, URL username parsing, and repository-data transformation.
 
-1. Open your repository on GitHub.
-2. Go to **Settings**.
-3. Select **Pages** from the sidebar.
-4. Under **Build and deployment**, set **Source** to `Deploy from a branch`.
-5. Select the `main` branch.
-6. Select `/ (root)` as the folder.
-7. Click **Save**.
+## Deployment
 
-GitHub will build and publish the site.
+### Vercel (all features)
 
-Your website will normally be available at:
+Deploy the repository and configure `GITHUB_TOKEN` in the Vercel project environment. The token stays in the serverless function and is never sent to the browser.
 
-```text
-https://YOUR_USERNAME.github.io/github-to-markdown/
-```
+### GitHub Pages (core features)
 
-For example:
+GitHub Pages can host the static client. Repository fetching, auditing, sharing, and Markdown export work, but Pages cannot run the serverless function; README and pinned data will be labeled unverified.
 
-```text
-https://quangshuynh.github.io/github-to-markdown/
-```
+## Repository rename checklist
 
-It may take a minute or two for the first deployment to become available.
+The repository is still named `github-to-markdown`. Immediately before or after renaming it to `gitprofilelens`:
 
-## Project Structure
+- Rename the repository in GitHub under **Settings → General → Repository name**.
+- Update the live-demo URL near the top of this README to `https://quangshuynh.github.io/gitprofilelens/` if GitHub Pages remains the host.
+- Update the clone URL and `cd` command in **Local setup** from `github-to-markdown` to `gitprofilelens`.
+- Recheck GitHub Pages branch/folder settings and wait for the renamed Pages site to deploy.
+- Update any Vercel project's Git repository connection, project name, domains, and deployment environment if they reference the old name.
+- Update external bookmarks, portfolio links, social previews, and repository topics.
+- Verify the share URL, serverless `/api/pinned-repositories` route, and `GITHUB_TOKEN` environment variable after redeployment.
+- Search the repository once more for `github-to-markdown`; no application code should depend on it after the clone/demo references are updated.
 
-```text
-github-to-markdown/
-├── index.html
-├── styles.css
-├── script.js
-└── README.md
-```
+GitHub normally redirects old repository URLs after a rename, but deployment URLs and third-party integrations should still be updated explicitly.
 
-### `index.html`
+## Limitations
 
-Contains the website structure, username input, generated Markdown output, and download controls.
+- Unauthenticated GitHub REST requests have a low hourly rate limit. The app reports the reset time when GitHub supplies it.
+- Root README and pin checks require the optional authenticated function.
+- The GraphQL README query covers the first 100 public repositories and checks common root filenames: `README.md`, `README`, and `readme.md`.
+- README size is only a useful warning signal; it cannot determine writing quality.
+- Recommendations are deterministic presentation guidance, not an assessment of code quality or developer ability.
+- A share URL re-fetches current public data; no audit snapshot or database is stored.
 
-### `styles.css`
+## Contributing
 
-Contains the styling and responsive layout.
-
-### `script.js`
-
-Handles GitHub API requests, repository pagination, pinned-repository integration, Markdown generation, auditing, copying, and `.md` downloads.
-
-### `api/pinned-repositories.js`
-
-Securely queries GitHub GraphQL for repositories pinned to a user's profile. It requires the server-side `GITHUB_TOKEN` environment variable.
-
-## GitHub API
-
-The website uses the GitHub REST API to retrieve public user and repository information. The optional serverless function uses GitHub GraphQL to retrieve profile pins.
-
-For example:
-
-```text
-https://api.github.com/users/USERNAME
-https://api.github.com/users/USERNAME/repos
-```
-
-Requests are made directly from the browser and do not require authentication for basic usage.
-
-Because unauthenticated GitHub API requests are rate-limited, a larger production deployment may benefit from a backend or serverless function with authenticated GitHub API requests.
+1. Create a focused branch.
+2. Keep scoring changes deterministic and document their rationale.
+3. Add or update behavior-focused tests.
+4. Run `npm test` and `npm run check`.
+5. Open a pull request describing user-facing changes and scoring tradeoffs.
 
 ## License
 
