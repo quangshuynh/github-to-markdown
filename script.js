@@ -6,6 +6,7 @@ const resultSection = document.querySelector("#result-section");
 const profileAvatar = document.querySelector("#profile-avatar");
 const profileName = document.querySelector("#profile-name");
 const profileLink = document.querySelector("#profile-link");
+const profileInsight = document.querySelector("#profile-insight");
 const shareButton = document.querySelector("#share-button");
 const overallScore = document.querySelector("#overall-score");
 const categoryScores = document.querySelector("#category-scores");
@@ -249,11 +250,35 @@ function renderResults() {
  */
 function renderProfileHeader() {
   const user = appState.user;
+  const profileScore = GitHubAudit.scoreProfile(appState.audits);
+  const firstName = (user.name || user.login).trim().split(/\s+/)[0];
+  const strongestCategory = getStrongestCategory(profileScore.categories);
   profileAvatar.src = user.avatar_url;
   profileAvatar.alt = `${user.login}'s GitHub avatar`;
   profileName.textContent = user.name || `@${user.login}`;
   profileLink.href = user.html_url;
   profileLink.textContent = `@${user.login}`;
+  profileInsight.textContent = `${firstName}'s portfolio snapshot: ${appState.repositories.length} public ${appState.repositories.length === 1 ? "project" : "projects"} · strongest signal: ${strongestCategory}.`;
+}
+
+/**
+ * finds the strongest scored profile category for the personalized summary
+ * @param {Object} categories profile category scores
+ * @returns {string} readable category name
+ */
+function getStrongestCategory(categories) {
+  const labels = {
+    presentation: "repository presentation",
+    descriptions: "descriptions",
+    readme: "README quality",
+    discoverability: "discoverability",
+    maintenance: "maintenance",
+    focus: "portfolio focus",
+  };
+  const entries = Object.entries(categories);
+  if (entries.length === 0) return "a fresh start";
+  const strongest = entries.reduce((best, entry) => entry[1] > best[1] ? entry : best);
+  return labels[strongest[0]];
 }
 
 /**

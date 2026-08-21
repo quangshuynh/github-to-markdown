@@ -36,6 +36,8 @@ test("serverless metadata endpoint transforms pins and README blobs", async () =
             nodes: [
               { name: "portfolio", readmeMarkdown: { byteSize: 1800, text: "# Portfolio\n## Installation\n```sh\nnpm install\n```\n## Usage\nRun it.\n## Demo\n![Screenshot](demo.png)\n## Contributing\nPRs welcome." }, readmeUppercase: null, readmeLowercase: null },
               { name: "empty", readmeMarkdown: null, readmeUppercase: null, readmeLowercase: null },
+              { name: "alternate", readmeMarkdown: null, readmeUppercase: null, readmeLowercase: { byteSize: 900, text: "# Alternate\n## Getting Started\n## Quickstart\n## Screenshots\n<img src=\"demo.png\">" } },
+              { name: "blank", readmeMarkdown: { byteSize: 0, text: "" }, readmeUppercase: null, readmeLowercase: null },
             ],
           },
         },
@@ -57,6 +59,18 @@ test("serverless metadata endpoint transforms pins and README blobs", async () =
       headingCount: 5,
     });
     assert.deepEqual(result.body.readmes.empty, { present: false, size: null });
+    assert.deepEqual(result.body.readmes.alternate.sections, {
+      overview: false, installation: true, usage: true, examples: true, contributing: false,
+    });
+    assert.equal(result.body.readmes.alternate.hasImage, true);
+    assert.deepEqual(result.body.readmes.blank, {
+      present: true,
+      size: 0,
+      sections: { overview: false, installation: false, usage: false, examples: false, contributing: false },
+      hasCodeBlock: false,
+      hasImage: false,
+      headingCount: 0,
+    });
   } finally {
     global.fetch = originalFetch;
     if (originalToken === undefined) delete process.env.GITHUB_TOKEN;
