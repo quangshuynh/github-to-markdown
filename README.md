@@ -107,6 +107,7 @@ The browser fetches public users and paginated repositories from GitHub REST. Th
 ```bash
 npm test
 npm run check
+npm run test:browser
 ```
 
 Tests cover meaningful scoring behavior, vague-description guidance, missing presentation fundamentals, recommendation ranking, empty profiles, URL username parsing, and repository-data transformation.
