@@ -172,7 +172,39 @@
       return { score: 55, findings };
     }
 
-    return { score: 100, findings };
+    // Older deployments only expose byte size, so preserve their established score.
+    if (!readme.sections) return { score: 100, findings };
+
+    let score = 35;
+    const sections = readme.sections;
+    const coreSections = [sections.overview, sections.installation, sections.usage];
+    score += coreSections.filter(Boolean).length * 15;
+    score += sections.examples ? 10 : 0;
+    score += sections.contributing ? 5 : 0;
+    score += readme.hasCodeBlock ? 5 : 0;
+    score += readme.hasImage ? 5 : 0;
+    score += readme.headingCount >= 3 ? 5 : 0;
+
+    const missingCore = [
+      ["overview", sections.overview],
+      ["installation or setup", sections.installation],
+      ["usage", sections.usage],
+    ].filter((entry) => !entry[1]).map((entry) => entry[0]);
+
+    if (missingCore.length > 0) {
+      findings.push(createFinding(
+        "README quality",
+        missingCore.length >= 2 ? "medium" : "low",
+        `README is missing clear ${missingCore.join(", ")} guidance.`,
+        "Add clearly labeled sections so visitors can understand, install, and use the project quickly.",
+        true
+      ));
+    }
+    if (!sections.examples && !readme.hasImage) {
+      findings.push(createFinding("README quality", "low", "README has no detected example, demo, screenshot, or image.", "Show the project in action with a concise example, screenshot, or demo section.", true));
+    }
+
+    return { score: clampScore(score), findings };
   }
 
   /**

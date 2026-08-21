@@ -7,6 +7,7 @@ const {
   scoreProfile,
   scoreRepository,
   transformRepository,
+  scoreReadme,
 } = require("../audit.js");
 
 /**
@@ -74,6 +75,24 @@ test("repository scoring identifies missing presentation fundamentals", () => {
   assert.ok(audit.score < 40);
   assert.ok(audit.findings.some((finding) => /no root README/i.test(finding.reason)));
   assert.ok(audit.findings.some((finding) => /too generic/i.test(finding.reason)));
+});
+
+test("README scoring rewards useful structure and explains missing core guidance", () => {
+  const rich = scoreReadme({
+    present: true, size: 1800,
+    sections: { overview: true, installation: true, usage: true, examples: true, contributing: true },
+    hasCodeBlock: true, hasImage: true, headingCount: 6,
+  });
+  const sparse = scoreReadme({
+    present: true, size: 900,
+    sections: { overview: true, installation: false, usage: false, examples: false, contributing: false },
+    hasCodeBlock: false, hasImage: false, headingCount: 1,
+  });
+
+  assert.equal(rich.score, 100);
+  assert.ok(sparse.score < rich.score);
+  assert.ok(sparse.findings.some((finding) => /installation or setup, usage/i.test(finding.reason)));
+  assert.ok(sparse.findings.some((finding) => /no detected example/i.test(finding.reason)));
 });
 
 test("profile recommendations rank widespread high-severity issues", () => {

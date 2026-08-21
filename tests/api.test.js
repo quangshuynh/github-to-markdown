@@ -34,7 +34,7 @@ test("serverless metadata endpoint transforms pins and README blobs", async () =
           pinnedItems: { nodes: [{ name: "portfolio" }] },
           repositories: {
             nodes: [
-              { name: "portfolio", readmeMarkdown: { byteSize: 1800 }, readmeUppercase: null, readmeLowercase: null },
+              { name: "portfolio", readmeMarkdown: { byteSize: 1800, text: "# Portfolio\n## Installation\n```sh\nnpm install\n```\n## Usage\nRun it.\n## Demo\n![Screenshot](demo.png)\n## Contributing\nPRs welcome." }, readmeUppercase: null, readmeLowercase: null },
               { name: "empty", readmeMarkdown: null, readmeUppercase: null, readmeLowercase: null },
             ],
           },
@@ -48,7 +48,14 @@ test("serverless metadata endpoint transforms pins and README blobs", async () =
     await handler({ method: "GET", query: { username: "example" } }, response);
     assert.equal(result.status, 200);
     assert.deepEqual(result.body.repositories, ["portfolio"]);
-    assert.deepEqual(result.body.readmes.portfolio, { present: true, size: 1800 });
+    assert.deepEqual(result.body.readmes.portfolio, {
+      present: true,
+      size: 1800,
+      sections: { overview: false, installation: true, usage: true, examples: true, contributing: true },
+      hasCodeBlock: true,
+      hasImage: true,
+      headingCount: 5,
+    });
     assert.deepEqual(result.body.readmes.empty, { present: false, size: null });
   } finally {
     global.fetch = originalFetch;

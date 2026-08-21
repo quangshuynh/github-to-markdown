@@ -49,13 +49,13 @@ async function pinnedRepositoriesHandler(request, response) {
                 nodes {
                   name
                   readmeMarkdown: object(expression: "HEAD:README.md") {
-                    ... on Blob { byteSize }
+                    ... on Blob { byteSize text }
                   }
                   readmeUppercase: object(expression: "HEAD:README") {
-                    ... on Blob { byteSize }
+                    ... on Blob { byteSize text }
                   }
                   readmeLowercase: object(expression: "HEAD:readme.md") {
-                    ... on Blob { byteSize }
+                    ... on Blob { byteSize text }
                   }
                 }
               }
@@ -113,8 +113,32 @@ function getReadmeEntry(repository) {
     repository.readmeLowercase;
   return [
     repository.name,
-    { present: Boolean(readme), size: readme?.byteSize ?? null },
+    readme ? { present: true, size: readme.byteSize, ...analyzeReadme(readme.text || "") } : { present: false, size: null },
   ];
+}
+
+/**
+ * extracts useful, deterministic documentation signals without retaining README text
+ * @param {string} markdown README markdown
+ * @returns {Object} structural README signals
+ */
+function analyzeReadme(markdown) {
+  const headings = [...markdown.matchAll(/^#{1,6}\s+(.+)$/gm)]
+    .map((match) => match[1].replace(/[*_`#]/g, "").trim().toLowerCase());
+  const hasHeading = (pattern) => headings.some((heading) => pattern.test(heading));
+
+  return {
+    sections: {
+      overview: hasHeading(/overview|about|introduction|what (?:it|this)|features?/),
+      installation: hasHeading(/install|setup|getting started|prerequisites?/),
+      usage: hasHeading(/usage|how to use|quick ?start|running/),
+      examples: hasHeading(/examples?|demo|screenshots?|preview/),
+      contributing: hasHeading(/contribut|development/),
+    },
+    hasCodeBlock: /```[\s\S]*?```/.test(markdown),
+    hasImage: /!\[[^\]]*\]\([^)]+\)|<img\b/i.test(markdown),
+    headingCount: headings.length,
+  };
 }
 
 module.exports = pinnedRepositoriesHandler;

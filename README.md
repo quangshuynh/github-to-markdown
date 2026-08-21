@@ -34,7 +34,7 @@ The scoring implementation lives in `audit.js` and is shared by the browser and 
 
 - Repository presentation: name clarity and consistency.
 - Descriptions: specificity, useful length, placeholder text, and basic polish.
-- README quality: presence and a conservative size check.
+- README quality: presence, useful length, core sections (overview, setup, and usage), examples, code samples, visuals, and contribution guidance.
 - Discoverability: topics, license, and a demo link where it is likely useful.
 - Maintenance: push recency while treating archived projects as intentionally complete.
 
