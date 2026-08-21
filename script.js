@@ -44,7 +44,38 @@ for (const tabButton of tabButtons) {
   tabButton.addEventListener("click", handleTabClick);
 }
 
+randomizeDoodles();
 initializeFromUrl();
+
+/**
+ * varies decorative artwork within CSS-enforced gutter zones
+ * @returns {void} no return value
+ */
+function randomizeDoodles() {
+  const doodles = document.querySelector(".page-doodles");
+  if (!doodles) return;
+
+  const randomBetween = (minimum, maximum) =>
+    Math.round(minimum + Math.random() * (maximum - minimum));
+  const properties = {
+    "--ring-y": `${randomBetween(40, 240)}px`,
+    "--ring-rotation": `${randomBetween(-24, 18)}deg`,
+    "--star-y": `${randomBetween(100, 360)}px`,
+    "--star-rotation": `${randomBetween(-18, 24)}deg`,
+    "--dots-bottom": `${randomBetween(45, 220)}px`,
+    "--dots-rotation": `${randomBetween(-12, 14)}deg`,
+    "--squiggle-bottom": `${randomBetween(35, 180)}px`,
+    "--squiggle-rotation": `${randomBetween(-13, 9)}deg`,
+    "--underline-rotation": `${randomBetween(-4, 3)}deg`,
+    "--underline-width": `${randomBetween(72, 106)}px`,
+  };
+
+  for (const [property, value] of Object.entries(properties)) {
+    doodles.style.setProperty(property, value);
+  }
+  document.documentElement.style.setProperty("--underline-rotation", properties["--underline-rotation"]);
+  document.documentElement.style.setProperty("--underline-width", properties["--underline-width"]);
+}
 
 /**
  * loads a profile when the form is submitted

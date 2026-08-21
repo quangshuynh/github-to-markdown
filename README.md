@@ -5,6 +5,7 @@
 GitProfileLens analyzes your public GitHub repositories and helps you understand how your developer portfolio is presented. It identifies weak repository metadata, surfaces actionable improvements, lets you explore repository information, and exports your GitHub data to clean Markdown.
 
 Results include a personalized portfolio snapshot highlighting the profile's strongest presentation signal.
+Hand-drawn decorative accents are randomized on each load within protected page gutters, adding character without image downloads or interference with controls and screen readers.
 
 [Open the live demo](https://quangshuynh.github.io/gitprofilelens/)
 

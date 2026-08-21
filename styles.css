@@ -12,7 +12,14 @@ body { margin: 0; min-height: 100vh; background: #0b0f14; }
 button, input, textarea { font: inherit; }
 button, a, input { -webkit-tap-highlight-color: transparent; }
 
-.container { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 80px; }
+.container { position: relative; z-index: 1; width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 80px; }
+.page-doodles { position: fixed; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; }
+.doodle { position: absolute; display: block; opacity: .5; }
+.doodle-ring { top: var(--ring-y, 74px); left: max(12px, calc(50% - 700px)); width: 74px; height: 74px; border: 3px solid #d2a8ff; border-radius: 46% 54% 48% 52%; transform: rotate(var(--ring-rotation, -13deg)); box-shadow: inset 0 0 0 5px #0b0f14, inset 0 0 0 7px rgba(210,168,255,.45); }
+.doodle-star { top: var(--star-y, 205px); right: max(14px, calc(50% - 695px)); color: #e3b341; font-size: 3rem; transform: rotate(var(--star-rotation, 12deg)); text-shadow: 22px 25px 0 rgba(227,179,65,.3); }
+.doodle-dots { right: max(12px, calc(50% - 700px)); bottom: var(--dots-bottom, 90px); width: 76px; height: 58px; background-image: radial-gradient(circle, #3fb950 2px, transparent 3px); background-size: 15px 15px; transform: rotate(var(--dots-rotation, 8deg)); }
+.doodle-squiggle { position: absolute; bottom: var(--squiggle-bottom, 55px); left: max(10px, calc(50% - 710px)); width: 120px; fill: none; stroke: #58a6ff; stroke-width: 4; stroke-linecap: round; opacity: .42; transform: rotate(var(--squiggle-rotation, -8deg)); }
+.hero::after { content: ""; display: block; width: var(--underline-width, 88px); height: 8px; margin-top: -28px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 9'%3E%3Cpath d='M2 6 C22 1 37 8 55 4 S75 3 88 5' fill='none' stroke='%2358a6ff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat; transform: rotate(var(--underline-rotation, -2deg)); opacity: .75; }
 .hero { width: 100%; max-width: 760px; min-width: 0; margin-bottom: 34px; }
 .brand-name { margin: 0 0 10px; color: #58a6ff; font-size: .86rem; font-weight: 850; letter-spacing: .08em; }
 .eyebrow { margin: 0 0 8px; color: #58a6ff; font-size: .78rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
@@ -153,6 +160,17 @@ textarea:focus { border-color: #58a6ff; }
   .actions button { flex: 1; }
   .current-description, .repo-meta-line, .finding p, .repository-card p { overflow-wrap: anywhere; }
   .footer { flex-direction: column; gap: 5px; }
+  .doodle-ring { left: -64px; }
+  .doodle-star { right: -34px; font-size: 2rem; }
+  .doodle-dots { right: -68px; }
+  .doodle-squiggle { display: none; }
+}
+
+@media (min-width: 761px) and (max-width: 1399px) {
+  .doodle-ring { left: -64px; }
+  .doodle-star { right: -42px; }
+  .doodle-dots { right: -68px; }
+  .doodle-squiggle { left: -108px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
