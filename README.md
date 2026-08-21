@@ -7,7 +7,7 @@ GitProfileLens analyzes your public GitHub repositories and helps you understand
 Results include a personalized portfolio snapshot highlighting the profile's strongest presentation signal.
 Hand-drawn decorative accents are randomized on each load within protected page gutters, adding character without image downloads or interference with controls and screen readers.
 
-[Open the live demo](https://quangshuynh.github.io/gitprofilelens/)
+[Open the live demo](https://gitprofilelens.vercel.app/)
 
 ![GitProfileLens overview showing the profile score and prioritized recommendations](docs/screenshot.png)
 
