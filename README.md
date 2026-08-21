@@ -22,6 +22,7 @@ Hand-drawn decorative accents are randomized on each load within protected page 
 - Load every public repository owned by a GitHub user with pagination.
 - Open shareable audits such as `/?user=quangshuynh`.
 - Calculate an overall portfolio score and six explainable category scores.
+- Expand any category score to see its calculation and the most common signals affecting it.
 - Audit repository names, descriptions, READMEs, topics, licenses, demos, and maintenance signals.
 - Separate factual checks from subjective presentation recommendations.
 - Rank the five highest-impact portfolio improvements.

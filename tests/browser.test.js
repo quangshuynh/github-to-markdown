@@ -64,6 +64,11 @@ test("profile flow renders verified README details and switches tabs", { skip: !
 
   assert.match(await page.locator("#status").innerText(), /including 1 profile pins/i);
   assert.match(await page.locator("#profile-insight").innerText(), /Example's portfolio snapshot: 1 public project/i);
+  await page.getByRole("button", { name: /explain the readme quality score/i }).click();
+  assert.match(await page.locator("#score-explanation-readme").innerText(), /rounded average of 1 repository README scores/i);
+  assert.match(await page.locator("#score-explanation-readme").innerText(), /Every analyzed repository passed/i);
+  await page.getByRole("button", { name: /explain the portfolio focus score/i }).click();
+  assert.match(await page.locator("#score-explanation-focus").innerText(), /55-point baseline/i);
   await page.getByRole("tab", { name: "Audit" }).click();
   await page.getByText("README checklist").waitFor();
   assert.match(await page.locator(".readme-checklist").innerText(), /✓ Overview/);

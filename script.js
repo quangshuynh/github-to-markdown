@@ -323,16 +323,16 @@ function renderOverview() {
   categoryScores.replaceChildren();
 
   const labels = [
-    ["Repository presentation", profileScore.categories.presentation],
-    ["Descriptions", profileScore.categories.descriptions],
-    ["README quality", profileScore.categories.readme],
-    ["Discoverability", profileScore.categories.discoverability],
-    ["Maintenance", profileScore.categories.maintenance],
-    ["Portfolio focus", profileScore.categories.focus],
+    ["presentation", "Repository presentation", profileScore.categories.presentation],
+    ["descriptions", "Descriptions", profileScore.categories.descriptions],
+    ["readme", "README quality", profileScore.categories.readme],
+    ["discoverability", "Discoverability", profileScore.categories.discoverability],
+    ["maintenance", "Maintenance", profileScore.categories.maintenance],
+    ["focus", "Portfolio focus", profileScore.categories.focus],
   ];
 
-  for (const [label, score] of labels) {
-    categoryScores.appendChild(createCategoryScore(label, score));
+  for (const [key, label, score] of labels) {
+    categoryScores.appendChild(createCategoryScore(key, label, score));
   }
 
   recommendationList.replaceChildren();
@@ -347,18 +347,28 @@ function renderOverview() {
 
 /**
  * creates a category score display with a progress bar
+ * @param {string} key score category key
  * @param {string} label score category label
  * @param {number} score category score
  * @returns {HTMLElement} category score element
  */
-function createCategoryScore(label, score) {
+function createCategoryScore(key, label, score) {
   const item = document.createElement("div");
+  const trigger = document.createElement("button");
   const heading = document.createElement("div");
   const name = document.createElement("span");
   const value = document.createElement("strong");
   const track = document.createElement("div");
   const bar = document.createElement("span");
+  const explanation = createCategoryExplanation(key, score);
+  const explanationId = `score-explanation-${key}`;
   item.className = "category-score";
+  trigger.className = "category-score-trigger";
+  trigger.type = "button";
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-controls", explanationId);
+  trigger.setAttribute("aria-label", `Explain the ${label.toLowerCase()} score: ${score} out of 100`);
+  trigger.title = `Explain the ${label.toLowerCase()} score`;
   heading.className = "category-score-heading";
   name.textContent = label;
   value.textContent = score;
@@ -366,8 +376,89 @@ function createCategoryScore(label, score) {
   track.className = "score-track";
   bar.style.width = `${score}%`;
   track.appendChild(bar);
-  item.append(heading, track);
+  trigger.append(heading, track);
+  explanation.id = explanationId;
+  explanation.hidden = true;
+  trigger.addEventListener("click", () => {
+    const willOpen = explanation.hidden;
+    for (const openExplanation of categoryScores.querySelectorAll(".category-explanation:not([hidden])")) {
+      openExplanation.hidden = true;
+      openExplanation.closest(".category-score").classList.remove("is-open");
+      openExplanation.previousElementSibling.setAttribute("aria-expanded", "false");
+    }
+    explanation.hidden = !willOpen;
+    item.classList.toggle("is-open", willOpen);
+    trigger.setAttribute("aria-expanded", String(willOpen));
+  });
+  item.append(trigger, explanation);
   return item;
+}
+
+/**
+ * explains the data and formula behind a profile category score
+ * @param {string} key score category key
+ * @param {number} score category score
+ * @returns {HTMLElement} category explanation
+ */
+function createCategoryExplanation(key, score) {
+  const explanation = document.createElement("div");
+  const summary = document.createElement("p");
+  const list = document.createElement("ul");
+  explanation.className = "category-explanation";
+
+  if (key === "focus") {
+    const repositories = appState.repositories;
+    const active = repositories.filter((repository) => !repository.archived && !repository.fork);
+    const languageCounts = new Map();
+    for (const repository of active) {
+      if (repository.language) languageCounts.set(repository.language, (languageCounts.get(repository.language) || 0) + 1);
+    }
+    const leadingLanguage = [...languageCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const curatedCount = repositories.length - active.length;
+    summary.textContent = `${score}/100 uses a 55-point baseline, up to 30 points for a coherent language focus, and up to 15 points for archiving or forking work outside the active portfolio.`;
+    appendExplanationItem(list, `${active.length} of ${repositories.length} repositories are active, original projects.`);
+    appendExplanationItem(list, leadingLanguage ? `${leadingLanguage[0]} is the leading language across ${leadingLanguage[1]} active ${leadingLanguage[1] === 1 ? "repository" : "repositories"}.` : "No leading repository language could be determined.");
+    appendExplanationItem(list, `${curatedCount} archived or forked ${curatedCount === 1 ? "repository contributes" : "repositories contribute"} to the curation bonus.`);
+  } else {
+    const categoryNames = {
+      presentation: "Repository presentation",
+      descriptions: "Descriptions",
+      readme: "README quality",
+      discoverability: "Discoverability",
+      maintenance: "Project maintenance",
+    };
+    const repositoryScores = appState.audits.map((audit) => audit.categoryScores[key]);
+    const relevantFindings = appState.audits.flatMap((audit) =>
+      audit.findings.filter((finding) => finding.category === categoryNames[key])
+    );
+    const findingCounts = new Map();
+    for (const finding of relevantFindings) {
+      findingCounts.set(finding.reason, (findingCounts.get(finding.reason) || 0) + 1);
+    }
+    summary.textContent = `${score}/100 is the rounded average of ${repositoryScores.length} repository ${key === "readme" ? "README" : key} scores${repositoryScores.length ? `, ranging from ${Math.min(...repositoryScores)} to ${Math.max(...repositoryScores)}` : ""}.`;
+    if (findingCounts.size === 0) {
+      appendExplanationItem(list, "Every analyzed repository passed the checks in this category.");
+    } else {
+      for (const [reason, count] of [...findingCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)) {
+        appendExplanationItem(list, `${count} ${count === 1 ? "repository" : "repositories"}: ${reason}`);
+      }
+    }
+  }
+
+  explanation.append(summary, list);
+  return explanation;
+}
+
+/**
+ * appends one score explanation point
+ * @param {HTMLUListElement} list explanation list
+ * @param {string} text explanation text
+ * @returns {void} no return value
+ */
+function appendExplanationItem(list, text) {
+  const item = document.createElement("li");
+  item.textContent = text;
+  list.appendChild(item);
 }
 
 /**
