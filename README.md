@@ -41,6 +41,7 @@ The scoring implementation lives in `audit.js` and is shared by the browser and 
 The profile score aggregates those results and adds portfolio focus. Every finding contains a severity, reason, suggested action, and a flag indicating whether it is a factual check or subjective recommendation.
 
 Unknown README data receives a neutral score and is explicitly marked unverified. The app does not invent README results or AI-generated descriptions.
+When structural README data is available, each repository audit card shows a checklist of detected and missing documentation elements alongside its README subscore.
 
 ## Markdown export
 

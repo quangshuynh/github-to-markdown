@@ -95,6 +95,14 @@ button.secondary { border-color: #30363d; background: #21262d; }
 .current-description { margin: 16px 0; padding: 10px 12px; border-left: 3px solid #58a6ff; background: #161b22; color: #c9d1d9; line-height: 1.5; }
 .fact-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
 .fact-row span { padding: 4px 8px; border: 1px solid #30363d; border-radius: 99px; color: #9da7b3; font-size: .72rem; }
+.readme-checklist { margin: 0 0 18px; padding: 13px 14px; border: 1px solid #30363d; border-radius: 8px; background: #11161d; }
+.readme-checklist > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.readme-checklist h4 { margin: 0; font-size: .82rem; }
+.readme-checklist > div span { color: #8b949e; font-size: .72rem; font-weight: 750; }
+.readme-checklist ul { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.readme-checklist li { padding: 4px 8px; border-radius: 99px; font-size: .72rem; }
+.readme-checklist .is-detected { background: rgba(63,185,80,.12); color: #56d364; }
+.readme-checklist .is-missing { background: rgba(210,153,34,.12); color: #e3b341; }
 .finding-list { display: grid; gap: 8px; }
 .finding { padding: 12px 14px; border-radius: 8px; background: #161b22; }
 .finding > div { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }

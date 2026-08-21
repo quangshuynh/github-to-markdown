@@ -418,6 +418,7 @@ function createAuditCard(audit) {
   const score = document.createElement("strong");
   const description = document.createElement("p");
   const facts = document.createElement("div");
+  const readmeChecklist = createReadmeChecklist(repository.readme, audit.categoryScores.readme);
   const findings = document.createElement("div");
   card.className = "audit-card";
   header.className = "audit-card-header";
@@ -451,7 +452,9 @@ function createAuditCard(audit) {
     }
   }
 
-  card.append(header, description, facts, findings);
+  card.append(header, description, facts);
+  if (readmeChecklist) card.appendChild(readmeChecklist);
+  card.appendChild(findings);
   return card;
 }
 
@@ -464,6 +467,47 @@ function createFactBadge(text) {
   const badge = document.createElement("span");
   badge.textContent = text;
   return badge;
+}
+
+/**
+ * creates a compact checklist of verified README content signals
+ * @param {Object} readme README metadata
+ * @param {number} readmeScore README category score
+ * @returns {HTMLElement|null} checklist or null when structural data is unavailable
+ */
+function createReadmeChecklist(readme, readmeScore) {
+  if (!readme?.present || !readme.sections) return null;
+
+  const section = document.createElement("section");
+  const header = document.createElement("div");
+  const title = document.createElement("h4");
+  const score = document.createElement("span");
+  const list = document.createElement("ul");
+  const checks = [
+    ["Overview", readme.sections.overview],
+    ["Setup", readme.sections.installation],
+    ["Usage", readme.sections.usage],
+    ["Example or demo", readme.sections.examples],
+    ["Contribution guide", readme.sections.contributing],
+    ["Code sample", readme.hasCodeBlock],
+    ["Visual", readme.hasImage],
+  ];
+
+  section.className = "readme-checklist";
+  section.setAttribute("aria-label", "README analysis");
+  title.textContent = "README checklist";
+  score.textContent = `${readmeScore}/100`;
+  header.append(title, score);
+
+  for (const [label, detected] of checks) {
+    const item = document.createElement("li");
+    item.className = detected ? "is-detected" : "is-missing";
+    item.textContent = `${detected ? "✓" : "–"} ${label}`;
+    list.appendChild(item);
+  }
+
+  section.append(header, list);
+  return section;
 }
 
 /**
