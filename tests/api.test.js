@@ -22,6 +22,36 @@ test("serverless metadata endpoint validates usernames", async () => {
   assert.equal(result.status, 400);
 });
 
+test("serverless metadata endpoint requires its GitHub token", async () => {
+  const originalToken = process.env.GITHUB_TOKEN;
+  delete process.env.GITHUB_TOKEN;
+  const { response, result } = createResponse();
+  try {
+    await handler({ method: "GET", query: { username: "example" } }, response);
+    assert.equal(result.status, 503);
+    assert.doesNotMatch(JSON.stringify(result.body), /github_pat|authorization|bearer/i);
+  } finally {
+    if (originalToken !== undefined) process.env.GITHUB_TOKEN = originalToken;
+  }
+});
+
+test("serverless metadata endpoint translates GraphQL rate limits", async () => {
+  const originalFetch = global.fetch;
+  const originalToken = process.env.GITHUB_TOKEN;
+  process.env.GITHUB_TOKEN = "test-token";
+  global.fetch = async () => ({ ok: false, status: 403, json: async () => ({ message: "rate limit" }) });
+  const { response, result } = createResponse();
+  try {
+    await handler({ method: "GET", query: { username: "example" } }, response);
+    assert.equal(result.status, 429);
+    assert.deepEqual(result.body, { error: "GitHub API rate limit reached." });
+  } finally {
+    global.fetch = originalFetch;
+    if (originalToken === undefined) delete process.env.GITHUB_TOKEN;
+    else process.env.GITHUB_TOKEN = originalToken;
+  }
+});
+
 test("serverless metadata endpoint transforms pins and README blobs", async () => {
   const originalFetch = global.fetch;
   const originalToken = process.env.GITHUB_TOKEN;

@@ -32,6 +32,18 @@ const repository = {
   updated_at: "2026-08-01T00:00:00Z",
   pushed_at: "2026-08-01T00:00:00Z",
 };
+const secondRepository = {
+  ...repository,
+  name: "api-toolkit",
+  full_name: "example/api-toolkit",
+  description: null,
+  html_url: "https://github.com/example/api-toolkit",
+  language: "Python",
+  topics: ["api"],
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2026-07-01T00:00:00Z",
+  pushed_at: "2026-07-01T00:00:00Z",
+};
 const readme = {
   present: true,
   size: 2200,
@@ -63,16 +75,16 @@ test("profile flow renders verified README details and switches tabs", { skip: !
   await page.locator("#result-section").waitFor({ state: "visible" });
 
   assert.match(await page.locator("#status").innerText(), /including 1 profile pins/i);
-  assert.match(await page.locator("#profile-insight").innerText(), /Example's portfolio snapshot: 1 public project/i);
+  assert.match(await page.locator("#profile-insight").innerText(), /Example's portfolio snapshot: 2 public projects/i);
   await page.getByRole("button", { name: /explain the readme quality score/i }).click();
-  assert.match(await page.locator("#score-explanation-readme").innerText(), /rounded average of 1 repository README scores/i);
+  assert.match(await page.locator("#score-explanation-readme").innerText(), /rounded average of 2 repository README scores/i);
   assert.match(await page.locator("#score-explanation-readme").innerText(), /Every analyzed repository passed/i);
   await page.getByRole("button", { name: /explain the portfolio focus score/i }).click();
   assert.match(await page.locator("#score-explanation-focus").innerText(), /55-point baseline/i);
   await page.getByRole("tab", { name: "Audit" }).click();
-  await page.getByText("README checklist").waitFor();
-  assert.match(await page.locator(".readme-checklist").innerText(), /✓ Overview/);
-  assert.match(await page.locator(".readme-checklist").innerText(), /– Contribution guide/);
+  await page.getByText("README checklist").first().waitFor();
+  assert.match(await page.locator(".readme-checklist").first().innerText(), /✓ Overview/);
+  assert.match(await page.locator(".readme-checklist").first().innerText(), /– Contribution guide/);
 
   await browser.close();
 });
@@ -96,15 +108,65 @@ test("mobile layout has no horizontal page overflow", { skip: !chromePath }, asy
   await browser.close();
 });
 
-async function mockGithubRequests(page) {
+test("Markdown export respects compact, pinned-only, and manual selection options", { skip: !chromePath }, async () => {
+  const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await mockGithubRequests(page);
+  await page.goto(`${baseUrl}/?user=example`);
+  await page.locator("#result-section").waitFor({ state: "visible" });
+
+  await page.getByRole("tab", { name: "Markdown export" }).click();
+  assert.match(await page.locator("#output").inputValue(), /portfolio-lens/);
+  assert.match(await page.locator("#output").inputValue(), /api-toolkit/);
+  assert.doesNotMatch(await page.locator("#output").inputValue(), /README is missing|actionable findings/i);
+  await page.getByLabel("Full repository details").uncheck();
+  assert.doesNotMatch(await page.locator("#output").inputValue(), /primary language:/i);
+  await page.getByLabel("Pinned repositories only").check();
+  assert.match(await page.locator("#output").inputValue(), /portfolio-lens/);
+  assert.doesNotMatch(await page.locator("#output").inputValue(), /api-toolkit/);
+
+  await page.getByLabel("Pinned repositories only").uncheck();
+  await page.getByRole("tab", { name: "Repositories" }).click();
+  await page.getByLabel("Include api-toolkit in selected exports").uncheck();
+  await page.getByRole("tab", { name: "Markdown export" }).click();
+  await page.getByLabel("Selected repositories only").check();
+  assert.match(await page.locator("#output").inputValue(), /portfolio-lens/);
+  assert.doesNotMatch(await page.locator("#output").inputValue(), /api-toolkit/);
+  await browser.close();
+});
+
+test("empty and nonexistent profiles show useful states", { skip: !chromePath }, async () => {
+  const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+  const emptyPage = await browser.newPage({ viewport: { width: 900, height: 700 } });
+  await mockGithubRequests(emptyPage, []);
+  await emptyPage.goto(`${baseUrl}/?user=example`);
+  await emptyPage.locator("#result-section").waitFor({ state: "visible" });
+  assert.match(await emptyPage.locator("#status").innerText(), /no public repositories/i);
+  assert.equal(await emptyPage.locator("#overall-score").innerText(), "0");
+
+  const missingPage = await browser.newPage({ viewport: { width: 900, height: 700 } });
+  await missingPage.route("https://api.github.com/users/missing", (route) => route.fulfill({ status: 404, json: { message: "Not Found" } }));
+  await missingPage.goto(`${baseUrl}/?user=missing`);
+  await missingPage.locator("#status.error").waitFor();
+  assert.match(await missingPage.locator("#status").innerText(), /user not found/i);
+  assert.equal(await missingPage.locator("#result-section").isHidden(), true);
+  await browser.close();
+});
+
+async function mockGithubRequests(page, repositories = [repository, secondRepository]) {
   await page.route("https://api.github.com/users/example", (route) =>
     route.fulfill({ json: { login: "example", name: "Example User", avatar_url: "", html_url: "https://github.com/example" } })
   );
   await page.route("https://api.github.com/users/example/repos**", (route) =>
-    route.fulfill({ json: [repository] })
+    route.fulfill({ json: repositories })
   );
   await page.route("**/api/pinned-repositories?username=example", (route) =>
-    route.fulfill({ json: { repositories: [repository.name], readmes: { [repository.name]: readme } } })
+    route.fulfill({
+      json: {
+        repositories: repositories.length ? [repository.name] : [],
+        readmes: Object.fromEntries(repositories.map((item) => [item.name, readme])),
+      },
+    })
   );
 }
 

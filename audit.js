@@ -628,6 +628,7 @@
     scoreDiscoverability,
     scoreMaintenance,
     scoreName,
+    scorePortfolioFocus,
     scoreProfile,
     scoreReadme,
     scoreRepository,

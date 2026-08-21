@@ -1,5 +1,9 @@
 # GitProfileLens
 
+[![CI](https://github.com/quangshuynh/gitprofilelens/actions/workflows/ci.yml/badge.svg)](https://github.com/quangshuynh/gitprofilelens/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/Live-Demo-238636)](https://gitprofilelens.vercel.app/)
+
 > See your GitHub profile through a different lens.
 
 GitProfileLens analyzes your public GitHub repositories and helps you understand how your developer portfolio is presented. It identifies weak repository metadata, surfaces actionable improvements, lets you explore repository information, and exports your GitHub data to clean Markdown.
@@ -73,8 +77,8 @@ Audit findings are not inserted into the Markdown report.
 No client build step or framework is required.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/github-to-markdown.git
-cd github-to-markdown
+git clone https://github.com/quangshuynh/gitprofilelens.git
+cd gitprofilelens
 python -m http.server 8000
 ```
 

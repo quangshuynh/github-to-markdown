@@ -96,6 +96,20 @@ test("report endpoint rejects an invalid username", async () => {
   assert.equal(result.status, 400);
 });
 
+test("report endpoint reports missing server credentials without exposing configuration", async () => {
+  const originalToken = process.env.GITHUB_TOKEN;
+  delete process.env.GITHUB_TOKEN;
+  const { response, result } = createResponse();
+  try {
+    await handler({ method: "GET", query: { user: "example" } }, response);
+    assert.equal(result.status, 503);
+    assert.deepEqual(result.body, { error: "GitHub API access is not configured" });
+    assert.doesNotMatch(JSON.stringify(result.body), /process\.env|authorization|bearer/i);
+  } finally {
+    if (originalToken !== undefined) process.env.GITHUB_TOKEN = originalToken;
+  }
+});
+
 test("report serializes public metadata, pins, topics, and nullable fields", async () => {
   const repositories = [
     createRepository(),
