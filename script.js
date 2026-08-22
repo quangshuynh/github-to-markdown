@@ -8,6 +8,7 @@ const profileName = document.querySelector("#profile-name");
 const profileLink = document.querySelector("#profile-link");
 const profileInsight = document.querySelector("#profile-insight");
 const shareButton = document.querySelector("#share-button");
+const scoreCardButton = document.querySelector("#score-card-button");
 const overallScore = document.querySelector("#overall-score");
 const categoryScores = document.querySelector("#category-scores");
 const recommendationList = document.querySelector("#recommendation-list");
@@ -33,7 +34,8 @@ const appState = {
 };
 
 form.addEventListener("submit", handleFormSubmit);
-shareButton.addEventListener("click", copyShareLink);
+shareButton.addEventListener("click", shareResult);
+scoreCardButton.addEventListener("click", downloadScoreCard);
 copyButton.addEventListener("click", copyMarkdown);
 downloadButton.addEventListener("click", downloadMarkdown);
 includeDetailsInput.addEventListener("change", refreshMarkdown);
@@ -959,16 +961,131 @@ function initializeFromUrl() {
 }
 
 /**
- * copies the current shareable profile url
+ * shares the current dynamic score and audit URL, with clipboard fallback
  * @returns {Promise<void>} no return value
  */
-async function copyShareLink() {
-  try {
-    await navigator.clipboard.writeText(window.location.href);
-    showTemporaryButtonText(shareButton, "Link copied");
-  } catch {
-    showError("Could not copy the link automatically. Copy it from the address bar.");
+async function shareResult() {
+  if (!appState.user) return;
+  const profileScore = GitHubAudit.scoreProfile(appState.audits);
+  const shareText = GitProfileShare.buildShareText(appState.user.login, profileScore.overall);
+
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: "My GitProfileLens score", text: shareText });
+      showTemporaryButtonText(shareButton, "Shared!");
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+    }
   }
+
+  try {
+    await navigator.clipboard.writeText(shareText);
+    showTemporaryButtonText(shareButton, "Copied!");
+  } catch {
+    showError("Could not share automatically. Copy the audit URL from the address bar.");
+  }
+}
+
+/**
+ * downloads a social-friendly PNG score card generated entirely in the browser
+ * @returns {void} no return value
+ */
+function downloadScoreCard() {
+  if (!appState.user) return;
+  const profileScore = GitHubAudit.scoreProfile(appState.audits);
+  const cardData = GitProfileShare.buildScoreCardData(appState.user.login, profileScore);
+  const canvas = renderScoreCard(cardData);
+
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      showError("Could not create the score card in this browser.");
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${appState.user.login}-gitprofilelens-score.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showTemporaryButtonText(scoreCardButton, "Downloaded!");
+  }, "image/png");
+}
+
+/**
+ * renders score-card data to a fixed-size canvas without external assets
+ * @param {Object} data dynamic score-card content
+ * @returns {HTMLCanvasElement} rendered score card
+ */
+function renderScoreCard(data) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1200;
+  canvas.height = 630;
+  const context = canvas.getContext("2d");
+
+  context.fillStyle = "#0b0f14";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const glow = context.createRadialGradient(940, 100, 20, 940, 100, 430);
+  glow.addColorStop(0, "rgba(88, 166, 255, .22)");
+  glow.addColorStop(1, "rgba(11, 15, 20, 0)");
+  context.fillStyle = glow;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.strokeStyle = "#d2a8ff";
+  context.lineWidth = 6;
+  context.beginPath();
+  context.ellipse(91, 104, 44, 49, -0.2, 0, Math.PI * 2);
+  context.stroke();
+  context.strokeStyle = "rgba(210, 168, 255, .45)";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.ellipse(91, 104, 34, 39, -0.1, 0, Math.PI * 2);
+  context.stroke();
+
+  context.fillStyle = "#58a6ff";
+  context.font = "800 28px system-ui, sans-serif";
+  context.fillText("GitProfileLens", 165, 96);
+  context.fillStyle = "#9da7b3";
+  context.font = "600 25px system-ui, sans-serif";
+  context.fillText(data.username, 165, 133);
+
+  context.fillStyle = "#e6edf3";
+  context.font = "800 40px system-ui, sans-serif";
+  context.fillText("GitHub Portfolio Score", 90, 245);
+  context.font = "900 146px system-ui, sans-serif";
+  context.fillText(String(data.score), 82, 405);
+  const scoreWidth = context.measureText(String(data.score)).width;
+  context.fillStyle = "#79c0ff";
+  context.font = "800 42px system-ui, sans-serif";
+  context.fillText("/ 100", 94 + scoreWidth, 399);
+
+  context.fillStyle = "#161b22";
+  drawRoundedRectangle(context, 650, 190, 455, 100, 16);
+  drawRoundedRectangle(context, 650, 315, 455, 100, 16);
+  context.fillStyle = "#8b949e";
+  context.font = "700 20px system-ui, sans-serif";
+  context.fillText("STRONGEST SIGNAL", 680, 225);
+  context.fillText("NEXT FOCUS", 680, 350);
+  context.fillStyle = "#e6edf3";
+  context.font = "750 27px system-ui, sans-serif";
+  context.fillText(data.strongest, 680, 264);
+  context.fillText(data.improvement, 680, 389);
+
+  context.fillStyle = "#8b949e";
+  context.font = "600 23px system-ui, sans-serif";
+  context.fillText("Presentation and discoverability, not developer ability.", 90, 515);
+  context.fillStyle = "#58a6ff";
+  context.font = "750 24px system-ui, sans-serif";
+  context.fillText(data.productUrl, 90, 566);
+  return canvas;
+}
+
+function drawRoundedRectangle(context, x, y, width, height, radius) {
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  context.fill();
 }
 
 /**

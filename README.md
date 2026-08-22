@@ -4,16 +4,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Live demo](https://img.shields.io/badge/Live-Demo-238636)](https://gitprofilelens.vercel.app/)
 
-> See your GitHub profile through a different lens.
+## What's your GitHub portfolio score?
 
-GitProfileLens analyzes your public GitHub repositories and helps you understand how your developer portfolio is presented. It identifies weak repository metadata, surfaces actionable improvements, lets you explore repository information, and exports your GitHub data to clean Markdown.
+Enter a GitHub username to get a transparent 0–100 portfolio presentation score and actionable recommendations for improving how the public profile and repositories present themselves. GitProfileLens evaluates presentation and discoverability, not developer ability or code quality.
 
-Results include a personalized portfolio snapshot highlighting the profile's strongest presentation signal.
-Hand-drawn decorative accents are randomized on each load within protected page gutters, adding character without image downloads or interference with controls and screen readers.
+### [Try the live audit →](https://gitprofilelens.vercel.app/)
 
-[Open the live demo](https://gitprofilelens.vercel.app/)
-
-![GitProfileLens overview showing the profile score and prioritized recommendations](docs/screenshot.png)
+![Completed GitProfileLens audit showing an overall portfolio score, category scores, and prioritized recommendations](docs/images/gitprofilelens-audit.png)
 
 ## Product areas
 
@@ -25,6 +22,8 @@ Hand-drawn decorative accents are randomized on each load within protected page 
 
 - Load every public repository owned by a GitHub user with pagination.
 - Open shareable audits such as `/?user=quangshuynh`.
+- Share a dynamic score message through the native share sheet or clipboard fallback.
+- Download a social-ready PNG score card generated locally in the browser.
 - Calculate an overall portfolio score and six explainable category scores.
 - Expand any category score to see its calculation and the most common signals affecting it.
 - Audit repository names, descriptions, READMEs, topics, licenses, demos, and maintenance signals.
@@ -103,13 +102,18 @@ Never commit `.env.local` or a GitHub token. Local environment files are ignored
 ## Architecture
 
 ```text
-github-to-markdown/              # current repository name before rename
+gitprofilelens/
 |-- api/
-|   `-- pinned-repositories.js  # authenticated GraphQL serverless function
+|   |-- github-metadata.js      # shared authenticated GraphQL enrichment
+|   |-- pinned-repositories.js  # browser metadata endpoint
+|   `-- report.js               # machine-readable JSON report endpoint
 |-- tests/
-|   `-- audit.test.js           # scoring, recommendation, URL, and transform tests
+|   |-- audit.test.js           # scoring, recommendation, URL, and transform tests
+|   |-- browser.test.js         # anonymous browser flows and responsive checks
+|   `-- share.test.js           # sharing and score-card data tests
 |-- audit.js                     # deterministic scoring and data transformation
 |-- index.html                   # accessible application structure
+|-- share.js                     # pure sharing and score-card helpers
 |-- script.js                    # fetching, state, rendering, URL, and export behavior
 |-- styles.css                   # responsive visual system
 `-- package.json                 # test and syntax-check scripts
@@ -125,7 +129,7 @@ npm run check
 npm run test:browser
 ```
 
-Tests cover meaningful scoring behavior, vague-description guidance, missing presentation fundamentals, recommendation ranking, empty profiles, URL username parsing, and repository-data transformation.
+Tests cover scoring behavior and invariants, recommendations, normalization, API failures, Markdown filtering, anonymous share-link loading, dynamic share content, and responsive browser flows. Network boundaries are mocked in the automated suite.
 
 ## Deployment
 
@@ -137,21 +141,6 @@ Deploy the repository and configure `GITHUB_TOKEN` in the Vercel project environ
 
 GitHub Pages can host the static client. Repository fetching, auditing, sharing, and Markdown export work, but Pages cannot run the serverless function; README and pinned data will be labeled unverified.
 
-## Repository rename checklist
-
-The repository is still named `github-to-markdown`. Immediately before or after renaming it to `gitprofilelens`:
-
-- Rename the repository in GitHub under **Settings → General → Repository name**.
-- Update the live-demo URL near the top of this README to `https://quangshuynh.github.io/gitprofilelens/` if GitHub Pages remains the host.
-- Update the clone URL and `cd` command in **Local setup** from `github-to-markdown` to `gitprofilelens`.
-- Recheck GitHub Pages branch/folder settings and wait for the renamed Pages site to deploy.
-- Update any Vercel project's Git repository connection, project name, domains, and deployment environment if they reference the old name.
-- Update external bookmarks, portfolio links, social previews, and repository topics.
-- Verify the share URL, serverless `/api/pinned-repositories` route, and `GITHUB_TOKEN` environment variable after redeployment.
-- Search the repository once more for `github-to-markdown`; no application code should depend on it after the clone/demo references are updated.
-
-GitHub normally redirects old repository URLs after a rename, but deployment URLs and third-party integrations should still be updated explicitly.
-
 ## Limitations
 
 - Unauthenticated GitHub REST requests have a low hourly rate limit. The app reports the reset time when GitHub supplies it.
@@ -162,6 +151,8 @@ GitHub normally redirects old repository URLs after a rename, but deployment URL
 - A share URL re-fetches current public data; no audit snapshot or database is stored.
 
 ## Contributing
+
+Think a scoring rule should work differently? [Open an issue](https://github.com/quangshuynh/gitprofilelens/issues) with a concrete example and rationale. Constructive feedback about transparent portfolio scoring is welcome.
 
 1. Create a focused branch.
 2. Keep scoring changes deterministic and document their rationale.

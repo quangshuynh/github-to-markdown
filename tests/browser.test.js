@@ -153,6 +153,72 @@ test("empty and nonexistent profiles show useful states", { skip: !chromePath },
   await browser.close();
 });
 
+test("sharing uses the dynamic score and opens anonymously from its URL", { skip: !chromePath }, async () => {
+  const browser = await chromium.launch({ executablePath: chromePath, headless: true });
+  const senderContext = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  await senderContext.addInitScript(() => {
+    window.__sharedResult = null;
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async (data) => { window.__sharedResult = data; },
+    });
+  });
+  const sender = await senderContext.newPage();
+  const browserErrors = [];
+  sender.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  sender.on("pageerror", (error) => browserErrors.push(error.message));
+  await mockGithubRequests(sender);
+  await sender.goto(`${baseUrl}/?user=example`);
+  await sender.locator("#result-section").waitFor({ state: "visible" });
+  const score = await sender.locator("#overall-score").innerText();
+  await sender.getByRole("button", { name: "Share result" }).click();
+  const payload = await sender.evaluate(() => window.__sharedResult);
+  assert.match(payload.text, new RegExp(`I got an? ${score}/100`));
+  assert.match(payload.text, /user=example/);
+  assert.doesNotMatch(payload.text, /token|authorization|github_pat/i);
+
+  const shareUrl = payload.text.match(/https:\/\/\S+$/)[0];
+  const recipientContext = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  const recipient = await recipientContext.newPage();
+  await mockGithubRequests(recipient);
+  await recipient.goto(`${baseUrl}/${new URL(shareUrl).search}`);
+  await recipient.locator("#result-section").waitFor({ state: "visible" });
+  assert.equal(await recipient.locator("#username").inputValue(), "example");
+  assert.equal(await recipient.locator("#overall-score").innerText(), score);
+
+  const downloadPromise = sender.waitForEvent("download");
+  await sender.getByRole("button", { name: "Download score card" }).click();
+  const download = await downloadPromise;
+  assert.equal(download.suggestedFilename(), "example-gitprofilelens-score.png");
+
+  const fallbackContext = await browser.newContext({ viewport: { width: 1000, height: 800 } });
+  await fallbackContext.addInitScript(() => {
+    window.__copiedResult = null;
+    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text) => { window.__copiedResult = text; } },
+    });
+  });
+  const fallbackPage = await fallbackContext.newPage();
+  await mockGithubRequests(fallbackPage);
+  await fallbackPage.goto(`${baseUrl}/?user=example`);
+  await fallbackPage.locator("#result-section").waitFor({ state: "visible" });
+  await fallbackPage.getByRole("button", { name: "Share result" }).click();
+  assert.match(await fallbackPage.evaluate(() => window.__copiedResult), /user=example/);
+  assert.equal(await fallbackPage.locator("#share-button").innerText(), "Copied!");
+  await fallbackPage.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async () => { throw new Error("clipboard unavailable"); } },
+    });
+  });
+  await fallbackPage.locator("#share-button").click();
+  assert.match(await fallbackPage.locator("#status.error").innerText(), /could not share automatically/i);
+  assert.deepEqual(browserErrors, []);
+  await browser.close();
+});
+
 async function mockGithubRequests(page, repositories = [repository, secondRepository]) {
   await page.route("https://api.github.com/users/example", (route) =>
     route.fulfill({ json: { login: "example", name: "Example User", avatar_url: "", html_url: "https://github.com/example" } })
