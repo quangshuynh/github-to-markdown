@@ -286,6 +286,7 @@ function renderProfileHeader() {
   const profileScore = GitHubAudit.scoreProfile(appState.audits);
   const firstName = (user.name || user.login).trim().split(/\s+/)[0];
   const strongestCategory = getStrongestCategory(profileScore.categories);
+  profileAvatar.crossOrigin = "anonymous";
   profileAvatar.src = user.avatar_url;
   profileAvatar.alt = `${user.login}'s GitHub avatar`;
   profileName.textContent = user.name || `@${user.login}`;
@@ -989,15 +990,24 @@ async function shareResult() {
 
 /**
  * downloads a social-friendly PNG score card generated entirely in the browser
- * @returns {void} no return value
+ * @returns {Promise<void>} resolves after the card image has been prepared
  */
-function downloadScoreCard() {
+async function downloadScoreCard() {
   if (!appState.user) return;
   const profileScore = GitHubAudit.scoreProfile(appState.audits);
   const cardData = GitProfileShare.buildScoreCardData(appState.user.login, profileScore);
-  const canvas = renderScoreCard(cardData);
+  scoreCardButton.disabled = true;
 
+  let avatar = null;
+  try {
+    avatar = await loadImage(appState.user.avatar_url);
+  } catch {
+    // A blocked avatar request falls back to the account's initial.
+  }
+
+  const canvas = renderScoreCard(cardData, avatar);
   canvas.toBlob((blob) => {
+    scoreCardButton.disabled = false;
     if (!blob) {
       showError("Could not create the score card in this browser.");
       return;
@@ -1015,11 +1025,31 @@ function downloadScoreCard() {
 }
 
 /**
+ * loads an image with anonymous CORS access so it can be safely drawn to canvas
+ * @param {string} source image url
+ * @returns {Promise<HTMLImageElement>} loaded image
+ */
+function loadImage(source) {
+  return new Promise((resolve, reject) => {
+    if (!source) {
+      reject(new Error("No image source"));
+      return;
+    }
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = source;
+  });
+}
+
+/**
  * renders score-card data to a fixed-size canvas without external assets
  * @param {Object} data dynamic score-card content
+ * @param {HTMLImageElement|null} avatar loaded GitHub avatar, when available
  * @returns {HTMLCanvasElement} rendered score card
  */
-function renderScoreCard(data) {
+function renderScoreCard(data, avatar) {
   const canvas = document.createElement("canvas");
   canvas.width = 1200;
   canvas.height = 630;
@@ -1033,15 +1063,16 @@ function renderScoreCard(data) {
   context.fillStyle = glow;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
+  drawScoreCardAvatar(context, avatar, data.username, 91, 104, 49);
   context.strokeStyle = "#d2a8ff";
   context.lineWidth = 6;
   context.beginPath();
-  context.ellipse(91, 104, 44, 49, -0.2, 0, Math.PI * 2);
+  context.arc(91, 104, 52, 0, Math.PI * 2);
   context.stroke();
   context.strokeStyle = "rgba(210, 168, 255, .45)";
   context.lineWidth = 3;
   context.beginPath();
-  context.ellipse(91, 104, 34, 39, -0.1, 0, Math.PI * 2);
+  context.arc(91, 104, 57, 0, Math.PI * 2);
   context.stroke();
 
   context.fillStyle = "#58a6ff";
@@ -1080,6 +1111,41 @@ function renderScoreCard(data) {
   context.font = "750 24px system-ui, sans-serif";
   context.fillText(data.productUrl, 90, 566);
   return canvas;
+}
+
+function drawScoreCardAvatar(context, avatar, username, centerX, centerY, radius) {
+  context.save();
+  context.beginPath();
+  context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  context.clip();
+
+  context.fillStyle = "#21262d";
+  context.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2);
+
+  if (avatar && avatar.naturalWidth && avatar.naturalHeight) {
+    const sourceSize = Math.min(avatar.naturalWidth, avatar.naturalHeight);
+    const sourceX = (avatar.naturalWidth - sourceSize) / 2;
+    const sourceY = (avatar.naturalHeight - sourceSize) / 2;
+    context.drawImage(
+      avatar,
+      sourceX,
+      sourceY,
+      sourceSize,
+      sourceSize,
+      centerX - radius,
+      centerY - radius,
+      radius * 2,
+      radius * 2
+    );
+  } else {
+    context.fillStyle = "#e6edf3";
+    context.font = "800 42px system-ui, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText((username[0] || "?").toUpperCase(), centerX, centerY + 2);
+  }
+
+  context.restore();
 }
 
 function drawRoundedRectangle(context, x, y, width, height, radius) {

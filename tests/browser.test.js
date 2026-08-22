@@ -220,8 +220,9 @@ test("sharing uses the dynamic score and opens anonymously from its URL", { skip
 });
 
 async function mockGithubRequests(page, repositories = [repository, secondRepository]) {
+  const avatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Crect width='96' height='96' fill='%2358a6ff'/%3E%3C/svg%3E";
   await page.route("https://api.github.com/users/example", (route) =>
-    route.fulfill({ json: { login: "example", name: "Example User", avatar_url: "", html_url: "https://github.com/example" } })
+    route.fulfill({ json: { login: "example", name: "Example User", avatar_url: avatar, html_url: "https://github.com/example" } })
   );
   await page.route("https://api.github.com/users/example/repos**", (route) =>
     route.fulfill({ json: repositories })
